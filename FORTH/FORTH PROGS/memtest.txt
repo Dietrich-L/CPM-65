@@ -1,0 +1,35 @@
+SCR # 3
+  0 ( MEMTEST                          31.01.22 )
+  1 hex
+  2
+  3 : .ERR ( mem ) cr ." memory error at $" hex . cr ;
+  4 : (test) ( pattern hmem lmem - ) ( non destructive )
+  5   do I c@ swap dup I c! I c@ =
+  6     if else I .ERR endif
+  7     I 0FF and if else ." ." endif
+  8     dup I c! loop drop ;
+  9
+ 10 : Test55 ( hmem lmem - ) 55 rot rot (test) ;
+ 11 : TestAA ( hmem lmem - ) AA rot rot (test) ;
+ 12
+ 13 -->
+ 14
+ 15
+
+SCR # 4
+  0 ( MEMTEST  main page )
+  1
+  2 : (memtest) ( himem lomem - )
+  3 2dup
+  4 cr ." test pattern $55  starting at $" dup . cr  Test55
+  5 cr ." test pattern $AA  starting at $" dup . cr  TestAA
+  6 cr ;
+  7
+  8 : MEMTEST
+  9 cr ." Memory Test " cr
+ 10 (memtest)
+ 11 cr ." finished " cr ;
+ 12
+ 13 ;S
+ 14
+ 15

@@ -1,0 +1,71 @@
+SCR # 3
+  0 ( Sysinfo                             D. Lausberg 15.5.21 )
+  1 FORTH DEFINITIONS IMMEDIATE hex
+  2 : cls 0c emit 0 drop ;
+  3 : DPH F8 @ ;
+  4 1 variable Drive
+  5 : .Ver dup 0F / 30 + emit ." ." 000F and . ;
+  6 : bdosver 00 0C BDOS drop 00ff and ;
+  7 : biosver 00 0C BDOS drop 100 / ;
+  8 : promver f82e c@ ;
+  9
+ 10
+ 11
+ 12 : .Header cls ."  Junior Computer System Status " CR ;
+ 13 -->
+ 14
+ 15
+
+SCR # 4
+  0 ( Sysinfo                             D. Lausberg 15.5.21 )
+  1
+  2 : autoexec -find drop drop cfa
+  3   ' QUIT cfa 0E + ! save-system ;
+  4 : drvparm dph 6 + c@ 1+ dup 6 .R dph 7 + c@ 6 .R
+  5      dph 8 + @ 1+ dup 8 .R 4 */ 8 .R dph 0A + c@ 8 * 8 .R
+  6      CR               ;
+  7 : .drives CR decimal
+  8   ."  Drive   SPB  SPBDIV   BPD  Cap kB   Dir #" CR
+  9   8 0 do ."   " I 41 + emit 3a emit 2 spaces
+ 10   I 0E BDOS if ."    ------ " CR else drvparm endif drop
+ 11
+ 12   loop CR 2 0E BDOS drop drop ;
+ 13 -->
+ 14
+ 15
+
+SCR # 5
+  0 ( Sysinfo                             D. Lausberg 15.5.21 )
+  1
+  2
+  3
+  4
+  5
+  6 : .Sys cr cr .Header hex
+  7        ."    BDOS V" bdosver .VER cr
+  8        ."    BIOS V" biosver .VER CR
+  9        ."    PROM V" promver .VER cr
+ 10        .drives
+ 11      cr 0 bdos ;
+ 12
+ 13 -->
+ 14
+ 15
+
+SCR # 6
+  0 ( Sysinfo                             D. Lausberg 15.5.21 )
+  1
+  2
+  3 decimal
+  4 latest 12 +origin !
+  5 here 30 +Origin !
+  6
+  7 ;S
+  8
+  9
+ 10
+ 11
+ 12
+ 13
+ 14
+ 15

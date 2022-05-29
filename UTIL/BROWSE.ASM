@@ -1,0 +1,518 @@
+;BROWSE.ASM - Browse a text file
+;V1.0	28.03.22	by D. Lausberg
+;V1.1	05.04.22	1 page back cmd added, error corrections
+
+
+VERSION	= $11		;VERSION NUMBER
+
+;=====================================
+
+;PAGE 00 CELLS
+cPage	= 0		;current page #
+cLine	= 1		;current line on cPage
+cp_Beg	= 2		;adr begin cPage
+cp_End	= 4		;adr end of cPage + 1 chr
+cchr	= 6		;adr current chr
+p_Tab	= 8		;adr page vector table PagTab
+m_Page	= 10		;last page currently in PagTab
+CMDKey	= 11		;command key
+ERRNO	= 12
+FilEND	= 13
+
+CCPV	= $DE
+BDOS	= $F0
+FCB1	= $F6
+POINT	= $FA			;POINTER FOR HEX MONITOR
+DMA	= $FE			;DMA-VECTOR
+
+TPA	= $200
+
+;SYSTEM CONSTANTS
+
+LpP	= 16		;lines per page		
+
+;BDOS COMMANDS
+
+BOOT	= $00
+CONIN	= $01
+CONOUT	= $02
+CONIO	= $06
+STROUT	= $09
+GETLIN	= $0A
+DSKSEL	= $0E
+OPEN	= $0F
+CLOSE	= $10
+RDSEQ	= $14
+WRITE	= $15
+CREATE	= $16
+GETDRV	= $19		;GET DEFAULT DRIVE
+BIOS	= $1A
+
+;CONTROL CODES
+
+;CONTROL CODES
+BRK_K	= $03
+UP	= $05
+BS	= $08
+TAB	= $09
+CLS	= $0C
+CR	= $0D
+EOT	= $00
+LF	= $0A
+P_UP	= $12
+EOFF	= $1A
+SP	= $20
+ESC	= $1B
+
+;ERROR CODES
+DOUBLE	= $DC
+EOF	= $D7
+NOCOM	= $80
+MISPAR	= $81
+ILLPAR	= $82
+TOOMCH	= $83
+EOL	= $84
+NO_FN	= $86		;no filename
+INV_FN	= $87		;invalid filename
+
+	ORG TPA
+
+	LDA #I_BLURP		;initial blurp
+	LDY #I_BLURP/256
+	JSR PRTSTR
+	JSR INIT
+	JSR L_FILE		;load filename.ext
+	BCS BROW6
+	JSR P_CPAGE		;print 1. page
+	BCS BROW3
+BROW1	JSR G_CMD		;get command key
+	JSR EXEC		;execute command
+	BCC BROW1
+BROW2	CMP #BRK_K
+	BEQ BROW4
+	CMP #EOT
+	BEQ BROW1
+BROW3	JSR ERROR
+	BCC BROW1
+BROW5	LDX #BOOT		;warm boot
+	JMP BDOS
+
+BROW4	LDA #ENDM		;end message
+	LDY #ENDM/256
+	JSR PRTSTR
+	JMP BROW5
+
+BROW6	JSR ERROR
+	JMP BROW5
+
+
+NXT_P	JSR CHKEOT		;print next page
+	BCC NXTP2
+	LDA #EOT
+	SEC
+	RTS
+
+NXTP2	INC cPage
+	LDA m_Page		;check for new page in PagTab
+	CMP cPage
+	BCS NXTP3
+	JSR G_cPInd		;set P_TAB, Index in Y
+	LDA CCHR		;save cChr to PagTab
+	STA (P_TAB),Y
+	INY
+	LDA CCHR+1
+	STA (P_TAB),Y	
+	INC m_Page
+NXTP3	JSR P_CPAGE		;print current page
+	RTS
+
+
+PRV_P	LDA cPage		;print previous page
+	BEQ PRVP1		;if 1. page reached
+	DEC cPage
+	LDA #PRV_PM		;print prvious page marker
+	LDY #PRV_PM/256
+	JSR PRTSTR
+	JSR G_cPInd		;set P_TAB, Index in Y
+	LDA (P_Tab),Y
+	STA CCHR		;set CCHT to current Page
+	INY
+	LDA (P_Tab),Y
+	STA CCHR+1
+	JSR P_CPAGE		;print current page
+	RTS
+
+PRVP1	CLC
+	RTS
+	
+	
+P_CPAGE	LDA #0			;print current page
+	STA CLine		;current line = 0
+PCP1	LDY #0
+	LDA (CCHR),Y
+	CMP #CR
+	BEQ PCP2
+	CMP #EOT
+	BEQ PCP3
+	CMP #EOFF
+	BEQ PCP3
+	JSR PRT_C		;print CHR & inc CCHR
+	JMP PCP1
+
+PCP2	JSR CRLF		;CR
+	JSR INC_CC
+	INC cLine
+	LDA cLine
+	CMP #LpP
+	BCC PCP1
+	CLC
+	RTS
+
+PCP3	LDA CCHR		;EOT met
+	STA FILEND
+	LDA CCHR+1
+	STA FILEND+1
+	LDA #EOT
+	SEC
+	RTS
+
+
+PRT_C	AND #$7F		;7 Bit ASCII only & TAB
+	CMP #TAB
+	BEQ PRTC1
+	CMP #$20		;printable chr's only
+	BCC INC_CC
+PRTC1	JSR PRTCHR		;print Chr
+INC_CC	INC CCHR		;inc cchr
+	BNE PRT_Cx
+	INC CCHR+1
+PRT_Cx	RTS
+
+
+RES_CC	LDA CP_BEG		;set cchr = cp_beg
+	STA CCHR
+	LDA CP_BEG+1
+	STA CCHR+1
+	RTS
+
+BREAK	LDA #BRK_K		;end browsing
+	SEC
+	RTS
+
+
+G_CMD	LDX #CONIO		;get command
+	LDA #$FF		;Input
+	JSR BDOS
+	JSR UPCASE
+	RTS
+
+
+EXEC	LDY #0		;SEARCH COMMAND & execute
+	STA CMDKEY
+EXEC4	LDA CMDTAB,Y
+	BEQ EXEC2	;COMMAND NOT FOUND
+	CMP CMDKEY
+	BEQ EXEC3	;FOUND
+	INY
+	INY
+	INY
+	BNE EXEC4
+
+EXEC3	INY
+	LDA CMDTAB,Y
+	PHA
+	INY
+	LDA CMDTAB,Y
+	PHA
+	RTS		;EXEC
+
+EXEC2	LDA #NOCOM	;UNKNOWN COMMAND
+	SEC
+	RTS
+
+
+INIT	LDY #0		;reset variables
+	LDX #ERRNO
+INIT1	STY 0,X
+	DEX
+	BPL INIT1
+	LDA #BUFFER
+	STA CP_BEG
+	STA CCHR
+	STA PAGTAB
+	LDA #BUFFER/256
+	STA CP_BEG+1
+	STA CCHR+1
+	STA PAGTAB+1
+	LDA #PAGTAB
+	STA P_Tab
+	;LDA #PAGTAB/256
+	;STA P_Tab+1
+	LDA (FCB1),Y
+	BNE INIT4
+	LDX #GETDRV
+	JSR BDOS
+	SEC
+INIT4	ADC #$40
+	STA DRIVE
+	JSR XCH_DSK
+	RTS
+
+
+XCH_DSK	LDA #XCHGM
+	LDY #XCHGM/256		;INSERT DISK
+	JSR PRTSTR
+	LDX #CONIN		;WAIT FOR KEY
+	JSR BDOS
+	JSR CRLF
+XCHDSKX	CLC
+	RTS
+
+
+L_FILE	LDY #1
+	LDA (FCB1),Y		;CHECK FOR ARGUMENT
+	CMP #SP
+	BEQ L_FIL1
+	CMP #'?
+	BEQ L_FIL6
+L_FIL2	LDX #OPEN
+	JSR BDOS
+	BCS L_FILX
+	JSR SETDMA	;DMA = BUFFER
+L_FIL3	LDX #RDSEQ
+	JSR BDOS
+	BCS L_FIL4
+	INC DMA+1
+	JMP L_FIL3
+
+L_FIL1	LDA #NO_FN
+	SEC
+	RTS
+
+L_FIL6	LDA #INV_FN
+	SEC
+	RTS
+
+L_FIL4	CMP #EOF
+	BEQ L_FIL5
+	SEC
+	RTS
+
+L_FIL5	LDA DMA
+	STA FilEND
+	LDA DMA+1
+	STA FILEND+1
+	CLC
+L_FILX	RTS
+
+
+SETDMA	LDA #BUFFER 	;SET DMA=BUFFER
+	STA DMA
+	LDA #BUFFER/256
+	STA DMA+1
+	RTS
+
+
+CHKEOT	LDA CCHR+1	;check for end of file
+	CMP FILEND+1
+	BCC CHKEOx
+	LDA CCHR
+	CMP FILEND
+CHKEOx	RTS
+
+
+G_cPInd	LDA cPage
+	ASL A			;set P_TAB+1
+	TAY
+	LDX #PAGTAB/256
+	BCC GcPIndx
+	INX
+GcPIndx	STX P_Tab+1
+	RTS
+
+;=============================
+
+ERROR	STA ERRNO	;ERROR ROUTINE
+	JSR CRLF
+	LDA #ERRTAB	;SET CCPV
+	STA CCPV
+	LDA #ERRTAB/256
+	STA CCPV+1
+	LDY #0		;CHECK ERROR CODE
+	LDA (CCPV),Y
+ERROR1	BEQ ERROR4	;END OF ERROR ROUTINE
+	CMP ERRNO
+	BEQ ERROR3
+ERROR2	JSR INCCPV	;SKIP ERROR MESSAGE
+	BNE ERROR2
+	JSR INCCPV
+	JMP ERROR1
+
+ERROR3	JSR INCCPV
+	PHA
+	JSR ERRTYP	;PRINT ERROR TYPE
+	JSR INCCPV
+	LDA CCPV	;PRINT ERROR MESSAGE
+	LDY CCPV+1
+	JSR PRTSTR
+	PLA
+	BPL ERROR5
+	JSR ASKRTY	;ASK FOR RETRY
+	LDA ERRNO
+	RTS
+
+ERROR4	JSR UETYP	;UNKNOWN ERROR
+ERROR5	SEC
+	RTS
+
+
+ERRTYP	LDY #0		;PRINT ERROR TYPE
+ERRTY1	LSR A
+	BCS ERRTY2
+	INY		;X=X+5
+	INY
+	INY
+	INY
+	INY
+	BNE ERRTY1
+
+ERRTY2	LDA ETYPTB,Y
+	BEQ UETYP	;LAST CHR?
+	JSR PRTCHR
+	INY
+	BNE ERRTY2
+
+UETYP	LDA #ERRM1
+	LDY #ERRM1/256
+	JSR PRTSTR
+	LDA ERRNO
+	JSR PRTHEX
+
+CRLF	LDA #CRLFM
+	LDY #CRLFM/256
+
+PRTSTR	LDX #STROUT
+	JMP BDOS
+
+
+PRT2SP	JSR PRTSP
+
+
+PRTSP	LDA #SP
+
+
+PRTCHR	LDX #CONOUT	;PRINTS A CHR
+	JMP BDOS
+
+
+INCCPV	INC CCPV	;INC CCPV
+	BNE INCCP1
+	INC CCPV+1
+INCCP1	LDA (CCPV),Y
+	RTS
+
+UPCASE	CMP #'a
+	BCC UPCASX
+	CMP #$7F
+	BCS UPCASX
+	AND #$5F
+UPCASX	RTS
+
+
+ASKRTY	LDA #RTYMES	;RETRY?
+	LDY #RTYMES/256
+	JSR PRTSTR
+	JSR UPCASE
+	CMP #'Y
+	BNE ASKRT1
+	CLC
+	RTS
+
+ASKRT1	SEC
+	RTS
+
+
+PRTHEX	PHA
+	LSR A
+	LSR A
+	LSR A
+	LSR A
+	JSR PRTNIB
+	PLA
+	AND #$0F
+
+PRTNIB	CMP #$0A
+	BCC PRTNI1
+	ADC #6
+PRTNI1	ADC #$30
+	JSR PRTCHR
+	RTS
+
+
+;======	TABLES ====== 
+
+CMDTAB	DB BRK_K
+	DD BREAK-1
+	DB CR
+	DD NXT_P-1
+	DB LF
+	DD NXT_P-1
+	DB SP
+	DD NXT_P-1
+	DB ESC
+	DD BREAK-1
+	DB UP
+	DD PRV_P-1
+	DB P_UP
+	DD PRV_P-1
+
+	DB $00
+
+
+;======	MESSAGES ====== 
+
+ERRM1	DB ' Error $',EOT
+RTYMES	DB CR,LF,'Retry	(Y/N) ? ',EOT
+
+ETYPTB	DB 'BIOS',$00,'BDOS',$00,'CCP',$00,$00
+	DB 'RSX',$00,$00,'USER',$00
+
+ERRTAB	DB $F9,$01,'Invalid Drive',EOT
+	DB $DE,$82,'Directory full',EOT
+	DB $DD,$82,'File not found',EOT
+	DB $DC,$02,'File exists',EOT
+	DB $D9,$02,'Invalid FCB',EOT
+	DB $D8,$82,'Disk full',EOT
+	DB $D6,$82,'File is R/O',EOT
+	DB $87,$10,'invalid filename,EOT
+	DB $86,$10,'no filename',EOT
+	DB $84,$10,'End of Line',EOT
+	DB $83,$10,'Too Much Parameters',EOT
+	DB $82,$10,'Illegal Parameter',EOT
+	DB $81,$10,'Missing Parameter',EOT
+	DB $80,$10,'Unknown Command',EOT
+
+	DB $00
+
+
+CRLFM	DB CR,LF,EOT
+
+ILLOPM	DB '???',EOT
+
+PRV_PM	DB CR,LF,'vvvvvvvvvvvvvvvvv',CR,LF,EOT
+
+
+I_BLURP	DB CLS,'        BROWSE V',VERSION/16+$30,'.',VERSION*$1000/$1000+$30
+	DB CR,LF,CR,LF
+	DB EOT
+
+ENDM	DB CR,LF,'  Browse finished',CR,LF,EOT
+
+XCHGM	DB CR,LF,'Insert disc to drive '
+DRIVE	DB 'B:',CR,LF,'and press any key ',CR,LF,EOT
+
+PagTab			;Page vector table
+
+BUFFER	= PagTab+512
+
+	END

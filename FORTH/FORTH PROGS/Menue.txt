@@ -1,0 +1,71 @@
+MENUE.BLK
+
+SCR # 3
+  0 ( Menue    )
+  1 hex
+  2 : NOOP ; ( do nothing )
+  3 : cases <builds dup 1 - ,
+  4     0 do [ ' NOOP CFA ] literal , loop does>
+  5     swap over @ min 0 max 2 * 2 + + @ execute ;
+  6
+  7
+  8
+  9
+ 10
+ 11
+ 12 -->
+ 13
+ 14
+ 15
+                                                                )SCR # 4
+  0 ( Menue Beispiel )
+  1 5 cases Menue
+  2 : M" -find drop drop cfa swap ' Menue + ! ;
+  3 4 M" .time
+  4 6 M" .date
+  5 8 M" .temp
+  6 A M" DST-ADJ
+  7 C M" bye
+  8
+  9
+ 10
+ 11
+ 12 -->
+ 13
+ 14
+ 15
+
+SCR # 5
+  0 ( Hauptmenue )
+  1
+  2 : Main reset-i2c begin CR
+  3 ."    I2C Utility Menue " CR
+  4 ."   A> Uhrzeit "       CR
+  5 ."   B> Datum"            CR
+  6 ."   C> Innentemperatur Computer" cr
+  7 ."   D> Sommer/Winterzeit Anpassung" cr
+  8 ."   E> Ende " cr
+  9               CR
+ 10
+ 11 ."  Option?  "   KEY 7 and 1 - Menue
+ 12  0 until ;
+ 13
+ 14 -->
+ 15
+                                                                )SCR # 6
+  0 ( I2C Utility Main Menue )
+  1
+  2 decimal
+  3 latest 12 +origin !
+  4 here 30 +origin !
+  5
+  6 ;S
+  7
+  8
+  9
+ 10
+ 11
+ 12
+ 13
+ 14
+ 15

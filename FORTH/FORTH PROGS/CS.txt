@@ -1,0 +1,17 @@
+SCR # 3
+  0 ( Compiler security check                 4.2.22 )
+  1 hex
+  2
+  3 FB variable P
+  4
+  5 : CS  ( P ! ) context @ @
+  6 cr ." Check Compiler Security " cr
+  7 begin ( dup id. ) dup   pfa
+  8   dup ( dup 0 d. ) 0FF and P @ =
+  9   if dup 0 d. swap ID. cr else swap drop endif
+ 10   lfa @ dup 0=
+ 11 until
+ 12 drop ;
+ 13
+ 14 ;S
+ 15

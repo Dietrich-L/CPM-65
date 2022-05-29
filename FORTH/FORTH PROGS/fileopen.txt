@@ -1,0 +1,73 @@
+fileopen.blk
+
+SCR # 3
+  0 ( FILEOPEN                     D. LAUSBERG    12.02.22 )
+  1 hex
+  2 0 variable Status      0 variable &EOT
+  3 0 variable &put         FF variable &get
+  4 0 variable IBuf FE allot
+  5 40 constant cpl         400 constant cps
+  6
+  7 : EOT 1 &EOT ! ;
+  8 : ?EOF if dup D7 = if drop EOT
+  9          else dos 0= ?Disk-err endif else drop endif ;
+ 10 : ?PRT dup bl < swap 7E > or 0= ;
+ 11
+ 12 : INIT lo EOM ! LO &Put ! FF &get ! 0 Status ! 0 &EOT !
+ 13        IBuf DOS set-dma ;
+ 14 -->
+ 15
+
+SCR # 4
+  0 ( FILEOPEN                                         SCR# 4 )
+  1 0 variable #--> -2 allot BL , 2D , 2D , 3E , BL , 0 ,
+  2
+  3 : (state) #--> status @ 2 * + @ =
+  4       if status @ 1+ status ! else 0 status ! endif ;
+  5
+  6
+  7 -->
+  8
+  9
+ 10
+ 11
+ 12
+ 13
+ 14
+ 15
+
+SCR # 5
+  0 ( FILEOPEN                                         SCR# 5 )
+  1 : +1get &get @ 1+ dup &get ! FF > ;
+  2 : +1put &put @ 1+ &put ! ;
+  3 : (putchr) &put @ C! +1put ;
+  4 : putchr dup (putchr) (state) ;
+  5 : (TAB) status @ 4 = if drop cps endif &put @ over 0 swap
+  6     m/mod drop drop - 0 do BL (putchr) loop 1 status ! ;
+  7 : TAB 8 (TAB) ;
+  8 : newline cpl (TAB) ;
+  9 : read-blk &EOT @ 0= if dos read ?EOF 0 &get ! endif ;
+ 10
+ 11 : gnchr (  - chr f ) +1get if read-blk endif
+ 12     IBuf &get @ + c@ &EOT @ ;
+ 13 : ?--> status @ 4 > if cps (TAB) endif ;
+ 14
+ 15 -->
+
+SCR # 6
+  0 ( FILEOPEN                                         SCR# 6 )
+  1 0 variable cmdtab -2 allot
+  2 0D , ] newline [   09 , ] TAB [    1A , ] EOT [
+  3 00 ,
+  4 : cmd cmdtab begin
+  5 over over c@ dup if = if 2+ @ execute drop 1
+  6     else 4 + 0 endif else drop drop drop drop 1 endif
+  7 until ;
+  8
+  9 : PNChr dup ?prt if putchr else cmd endif ;
+ 10 : fileread begin gnchr 0= if PNchr ?--> else drop endif
+ 11      &EOT @ until ;
+ 12 : fileopen dos FCB1 !fcb open-file ?disk-err
+ 13     drop init fileread cps (TAB) empty-buffers ;
+ 14 Forth decimal latest 12 +origin ! here 30 +Origin !
+ 15 ;S

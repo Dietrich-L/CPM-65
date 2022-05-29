@@ -1,0 +1,146 @@
+open i2c.blk ok
+
+SCR # 3
+  0 ( I2C routines for DS3231 and AT 24C32   D. Lausberg 7.6.21 )
+  1 HEX
+  2 : I2C ." I2C routines " CR ;   ( mark for forget )
+  3 F680 constant DRA            F681 constant PADD
+  4 F682 constant DRB            F683 constant PBDD
+  5
+  6 AE constant 24c32W           AF constant 24c32R
+  7 D0 constant ds3231W          D1 constant ds3231R
+  8 1 variable D-BUF
+  9
+ 10 : I2C-INIT PADD C@ 01 or PADD C! ;
+ 11
+ 12 : .B HEX 0 <# # #S #> Type ;
+ 13 : .W HEX 0 <# # # # #S #> Type ;
+ 14 -->
+ 15
+
+SCR # 4
+  0 ( I2C routines for DS3231 and AT 24C32             SCR# 4   )
+  1 : D-UP PBDD c@ BF and PBDD c! ;
+  2 : D-DN DRB C@ BF and DRB C! PBDD c@ 40 or PBDD C! ;
+  3 : CLK-UP DRA c@ 01 or DRA c! ;
+  4 : CLK-DN DRA c@ FE and DRA c! ;
+  5 : D-IN DRB c@ 40 and ;
+  6 : I2C-Start D-UP CLK-UP D-DN CLK-DN ;
+  7 : I2C-STOP D-DN CLK-UP D-UP ;
+  8 : I2C-ACK D-DN CLK-UP CLK-DN D-UP ;
+  9 : I2C-NAK D-UP CLK-UP CLK-DN ;
+ 10
+ 11 : CLR-I2C I2C-STOP I2C-Start D-UP 9 0 do CLK-UP CLK-DN LOOP
+ 12     I2C-Start I2C-Stop ;
+ 13 : ?ACK D-UP CLK-UP D-IN CLK-DN ;
+ 14
+ 15 -->
+
+SCR # 5
+  0 ( I2C routines for DS3231 and AT 24C32             SCR# 5   )
+  1 : ?ok if cr ."  NAK occured" cr abort endif ;
+  2 : RESET-I2C I2C-InIT CLR-I2C ;
+  3 : S-Byte  ( byte - f ) D-DN CLK-DN
+  4    8 0 do dup 80 and if D-UP else D-DN endif
+  5           CLK-UP CLK-DN 2 * 0FF and loop drop ?ACK ;
+  6 : S-nDB ( b1..bn n - ) 0 do S-Byte drop loop I2C-Stop ;
+  7 : R-Byte  (  - byte )  D-UP 0
+  8    8 0 do CLK-UP D-IN CLK-DN if 1 + endif 2 * loop 2 / ;
+  9 : R-lDB R-Byte I2C-NAK I2C-STOP ;
+ 10 : R-nDB ( n - b1..bn ) 1 - 0 do R-Byte I2C-ACK loop R-lDB ;
+ 11
+ 12 : RTC-R I2C-Start DS3231R S-Byte drop ;
+ 13 : Wait ( adr -  ) begin i2c-start s-byte ?terminal
+ 14     if abort endif 0= until I2C-Stop ;
+ 15 -->
+
+SCR # 6
+  0 ( I2C routines for AT 24C32                   SCR# 6   )
+  1 : S-EEPROM-ADR ( MEM -  ) ( MEM 16 Bit EEPROM adr )
+  2     24C32W dup Wait I2C-Start S-Byte drop dup 100 / S-Byte
+  3     drop 0FF and S-Byte drop ;
+  4 : R-EEPROM I2C-Start 24C32R S-Byte drop ;
+  5
+  6 : Dump-EEPROM ( page - ) cr 100 * dup S-EEPROM-adr R-EEPROM
+  7     hex 10 0 do dup I 10 * + .W ." : "
+  8         10 0 do R-Byte I2C-Ack .B ."  " loop cr loop drop
+  9     R-lDB drop cr ;
+ 10
+ 11
+ 12
+ 13 -->
+ 14
+ 15
+
+SCR # 7
+  0 ( I2C routines for DS3231                     SCR# 7   )
+  1 : S-RTC-Adr ( Register -   )  DS3231W dup
+  2       wait I2C-Start s-Byte drop s-Byte drop ;
+  3
+  4 : Set-Time ( hh mm ss - ) ( 24h Format )
+  5      0 S-RTC-ADR 3 S-nDB ;
+  6 : Set-Date ( yy mm dd wd -  ) ( wd 1 = Monday )
+  7      3 S-RTC-ADR 4 S-nDB ;
+  8 : SET-RTC ( reset ALM, CR, SR ) 7 S-RTC-ADR
+  9      9 0 do 0 S-Byte drop loop I2C-Stop ;
+ 10
+ 11 -->
+ 12
+ 13
+ 14
+ 15
+
+SCR # 8
+  0 ( I2C routines for DS3231                          SCR# 8   )
+  1 : .WD ( wd -  ) dup 1 = if ." Montag" endif
+  2                 dup 2 = if ." Dienstag" endif
+  3                 dup 3 = if ." Mittwoch" endif
+  4                 dup 4 = if ." Donnerstag" endif
+  5                 dup 5 = if ." Freitag" endif
+  6                 dup 6 = if ." Samstag" endif
+  7                     7 = if ." Sonntag" endif
+  8      ." , den " ;
+  9
+ 10 : .temp 11 s-rtc-adr rtc-r 2 r-ndb cr ." Temperatur: "
+ 11     decimal swap 2 .r ." ," 16 / . ." Grad" cr ;
+ 12
+ 13 -->
+ 14
+ 15
+
+
+SCR # 9
+  0 ( I2C routines for DS3231                          SCR# 9   )
+  1 : SCAN-I2C RESET-I2C 100 0 do I2C-Start I S-Byte
+  2      if   else hex cr ." I2C Adr : " I  2 / .B ."  W: " I .B
+  3      ."  R: " I 1+ .B endif I2C-STOP 2 +loop cr ;
+  4 : R-Time (  - ss mm hh ) 0 S-RTC-ADR RTC-R 3 R-nDB ;
+  5 : R-Date (  - wd dd mm yy ) 3 S-RTC-ADR RTC-R 4 R-nDB ;
+  6
+  7
+  8 : .Time R-Time cr ." Uhrzeit: " .B ." :" .B ." :" .B CR ;
+  9 : .Date R-Date >R >R >R cr .WD R> .B ." ." R> .B ." ." R>
+ 10         .B cr ;
+ 11
+ 12 -->
+ 13
+ 14
+ 15
+
+SCR # 10
+  0 ( I2C routines for DS3231                          SCR# 10  )
+  1
+  2 decimal
+  3 latest 12 +origin !
+  4 here 30 +Origin !
+  5
+  6 ;S
+  7
+  8
+  9
+ 10
+ 11
+ 12
+ 13
+ 14
+ 15

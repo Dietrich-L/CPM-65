@@ -1,0 +1,468 @@
+Startrek.bas
+
+ 10 PRINTCHR$(12);
+ 20 PRINTTAB(23);"S T A R T R E K"
+ 100 PRINT"                                  ,------*------,"
+ 101 PRINT"                ,-------------    `---  --------'"
+ 102 PRINT"                '--------- --'       / /"
+ 103 PRINT"                     ,---' '--------/ /--,"
+ 104 PRINT"                     `-------------------'"
+ 105 PRINT
+ 106 PRINT"                 Die USS ENTERPRISE --- NCC-1701"
+ 150 CLR
+ 200 A0$="   ":A1$="+K+":A2$=">@<":A3$=" * ":A4$="=-O":REM Symbole
+ 270 Z$="                         ":REM 25 Spaces
+ 330 DIM G(8,8),C(9,2),K(3,3),N(3),Z(8,8),D(8)
+ 370 T=INT(RND(0)*20+20)*100:T0=T:T9=25+INT(RND(1)*10):D0=0
+ 371 E=3000:E0=E
+ 440 P=10:P0=P:S9=200:S=0:B9=0:K9=0:X$="":X0$=" ist"
+ 470 DEF FND(D)=SQR((K(I,1)-S1)^2+(K(I,2)-S2)^2)
+ 475 DEF FNR(R)=INT(RND(1)*7.98+1.01)
+ 480 REM lege Ausgangslage der Enterprise fest
+ 490 Q1=FNR(1):Q2=FNR(1):S1=FNR(1):S2=FNR(1)
+ 530 FOR I=1 TO 9:C(I,1)=0:C(I,2)=0:NEXT
+ 540 C(3,1)=-1:C(2,1)=-1:C(4,1)=-1:C(4,2)=-1:C(5,2)=-1
+ 550 C(6,2)=-1
+ 600 C(1,2)=1:C(2,2)=1:C(6,1)=1:C(7,1)=1:C(8,1)=1
+ 610 C(8,2)=1:C(9,2)=1
+ 670 FOR I=1 TO 8:D(I)=0:NEXT
+ 710 B1$="NAVNBSFBSPHATORSHESTACOMXXX"
+ 810 REM Aufstellen, was sich im Weltraum befinden wird
+ 815 REM K3=Zahl Klingons, B3=Zahl Stationen, S3=Zahl Sterne
+ 820 FOR I=1 TO 8:FOR J=1 TO 8:K3=0:Z(I,J)=0:R1=RND(1)
+ 850 IF R1 >.98 THEN K3=3:GOTO 980
+ 860 IF R1 >.95 THEN K3=2:GOTO 980
+ 870 IF R1 >.8 THEN K3=1
+ 980 K9=K9+K3:B3=0:IF RND(1)>.96 THEN B3=1:B9=B9+1
+ 1040 G(I,J)=K3*100+B3*10+FNR(1):NEXT J,I:IF K9>T9 THEN T9=T9+1
+ 1100 IF B9<>0 THEN 1200
+ 1150 IF G(Q1,Q2)<200 THEN G(Q1,Q2)=G(Q1,Q2)+100:K9=K9+1
+ 1160 B9=1:G(Q1,Q2)=G(Q1,Q2)+10:Q1=FNR(1):Q2=FNR(1)
+ 1200 K7=K9:IF B9<>1 THEN X$="en":X0$=" sind"
+ 1220 PRINT
+ 1230 PRINT"Du hast die folgenden Anweisungen:"
+ 1240 PRINT"   Zerstoere die";K9;"Klingon Kampfschiffe, die den"
+ 1250 PRINT"   Weltraum aufruehren, bevor sie das Hauptquartier der"
+ 1260 PRINT"   Foederation am Sterntag";T0+T9;"angreifen koennen."
+ 1270 PRINT"   Es bleiben Dir";T9;"Tage. Es";X0$;B9;"Station";X$
+ 1280 PRINT"   im Raum, wo Du das Schiff aufladen kannst."
+ 1290 PRINT"Wenn Du bereit bist, dann druecke eine Taste.";
+ 1300 I=RND(1):GET A$:PRINT
+ 1310 REM Eindringen in einen neuen Quadranten
+ 1320 Z4=Q1:Z5=Q2:K3=0:B3=0:S3=0:G5=0:D4=.5*RND(1)
+ 1330 Z(Q1,Q2)=G(Q1,Q2)
+ 1390 IF Q1<1 OR Q1>8 OR Q2<1 OR Q2>8 THEN 1600
+ 1430 GOSUB 9030:PRINT:IF T0<>T THEN 1490
+ 1460 PRINT"Zu Beginn der Mission befindet sich das Raumschiff im"
+ 1470 PRINT"Quadranten ";G2$:GOTO 1500
+ 1490 PRINT"Eintritt in den Quadrant ";G2$;" . . ."
+ 1500 PRINT:K3=INT(G(Q1,Q2)*.01):B3=INT(G(Q1,Q2)*.1)-10*K3
+ 1540 S3=G(Q1,Q2)-100*K3-10*B3:IF K3=0 THEN 1590
+ 1560 PRINT"Kampfbereich      R O T E R   A L A R M"
+ 1570 IF S<200 THEN PRINT"   Schilde gefaehrlich niedrig"
+ 1590 FOR I=1 TO 3:K(I,1)=0:K(I,2)=0:NEXT I
+ 1600 FOR I=1 TO 3:K(I,3)=0:NEXT:Q$=Z$+Z$+Z$+Z$+Z$+Z$+Z$+LEFT$(Z$,17)
+ 1660 REM positioniere die ENTERPRISE, dann die Klingonen
+ 1670 REM und die Stationen und Sterne
+ 1680 A$=A4$:Z1=S1:Z2=S2:GOSUB 8670:IF K3<1 THEN 1820
+ 1720 FOR I=1 TO K3:GOSUB 8590:A$=A1$:Z1=R1:Z2=R2
+ 1780 GOSUB 8670:K(I,1)=R1:K(I,2)=R2:K(I,3)=S9*(.5+RND(1)):NEXT
+ 1820 IF B3<1 THEN 1910
+ 1880 GOSUB 8590:A$=A2$:Z1=R1:B4=R1:Z2=R2:B5=R2:GOSUB 8670
+ 1910 FOR I=1 TO S3:GOSUB 8590:A$=A3$:Z1=R1:Z2=R2:GOSUB 8670:NEXT
+ 1980 GOSUB 6430
+ 1990 IF S+E > 10 THEN IF E>10 OR D(7)=0 THEN 2060
+ 2020 PRINT:PRINT"*** Kritischer Fehler ***"
+ 2030 PRINT"Du bist gerade im Raum gestrandet. Du hast zu wenig"
+ 2040 PRINT"Manoevrierenergie und die Schildkontrolle kann derzeit"
+ 2050 PRINT"keine Energie auf den Antrieb transferieren !!!"
+ 2055 GOTO 6220
+ 2060 INPUT "Befehl ";A$
+ 2070 A9$="":FOR I=1 TO LEN(A$):A=ASC(MID$(A$,I,1)):IF A>96 THEN A=A-32
+ 2071 A9$=A9$+CHR$(A):NEXT:A$=A9$
+ 2080 FOR I=1 TO 9:IF LEFT$(A$,3)<>MID$(B1$,3*I-2,3) THEN 2160
+ 2140 ON I GOTO 2300,1980,4000,4260,4700,5530,5690,7290,6270
+ 2160 NEXT:PRINT"Gib einen der folgenden Befehle:"
+ 2180 PRINT"   NAV  Navigation"
+ 2190 PRINT"   NBS  Nahbereichsscanner"
+ 2200 PRINT"   FBS  Fernbereichsscanner"
+ 2210 PRINT"   PHA  Phaser feuern"
+ 2220 PRINT"   TOR  Photonen-Torpedo feuern"
+ 2230 PRINT"   SHE  Schildenergie aendern"
+ 2240 PRINT"   STA  Statusbericht des Schiffes"
+ 2250 PRINT"   COM  Computerabfrage"
+ 2260 PRINT"   XXX  Abbrechen der Mission":PRINT:GOTO 1990
+ 2290 REM Navigation
+ 2300 INPUT "Kurs (1-9)";C1:IF C1=9 THEN C1=1
+ 2310 IF C1>=1 AND C1<9 THEN 2350
+ 2330 PRINT"   Lt. Sulu: 'Falsche Kursdaten, Sir!'"
+ 2335 GOSUB 9700:GOTO 1990
+ 2350 X$=" 8":IF D(1)<0 THEN X$=" 0.2"
+ 2360 PRINT"Faktor (0 -";X$;")";:INPUT W1:IF D(1)<0 AND W1>.2 THEN 2470
+ 2380 IF W1>0 AND W1<=8 THEN 2490
+ 2390 IF W1=0 THEN 1990
+ 2420 PRINT"   Chefingenieur Scotty: 'Die Maschinen verkraften"
+ 2430 PRINTSPC(26);"Faktor";W1;"nicht!'":GOTO 1990
+ 2470 PRINT"   Hauptantrieb ist ausgefallen."
+ 2471 PRINT"   Hoechstgeschwindigkeit 0.2 Impuls":GOTO 1990
+ 2490 N=INT(W1*8+.5):IF E-N>=0 THEN 2590
+ 2500 PRINT"   Chefingenieur Scotty: 'Wir haben nicht genug"
+ 2510 PRINT"   Energie, um mit Geschwindigkeit";W1;"zu fliegen!'"
+ 2530 IF S<N-E OR D(7)<0 THEN 1990
+ 2550 PRINT"   Spock bestaetigt: '";S;"Energieeinheiten fuer"
+ 2560 PRINTSPC(20);"Schilde verwendet'":GOTO 1990
+ 2580 REM Klingonen ziehen und feuern
+ 2590 FOR I=1 TO K3:IF K(I,3)=0 THEN 2700
+ 2610 A$=A0$:Z1=K(I,1):Z2=K(I,2):GOSUB 8670:GOSUB 8590
+ 2660 K(I,1)=Z1:K(I,2)=Z2:A$=A1$:GOSUB 8670
+ 2700 NEXT:GOSUB 6000:D1=0:D6=W1:IF W1>=1 THEN D6=1
+ 2770 FOR I=1 TO 8: IF D(I)>=0 THEN 2880
+ 2790 D(I)=D(I)+D6:IF D(I)>-.1 AND D(I)<0 THEN D(I)=-.1:GOTO 2880
+ 2800 IF D(I)<0 THEN 2880
+ 2810 IF D1<>1 THEN D1=1:GOSUB 9300
+ 2840 PRINTTAB(18);:R1=I:GOSUB 8790:PRINT G2$;": Reparatur fertig"
+ 2880 NEXT:IF RND(1)>.2 THEN 3070
+ 2910 R1=FNR(1):IF RND(1)>=.6 THEN 3000
+ 2930 D(R1)=D(R1)-(RND(1)*5+1):GOSUB 9300
+ 2960 GOSUB 8790:PRINT TAB(18);G2$;" beschaedigt":PRINT:GOTO 3070
+ 3000 D(R1)=D(R1)+RND(1)*3+1:GOSUB 9300
+ 3030 GOSUB 8790:PRINT G2$;" Reparaturzustand verbessert":PRINT
+ 3060 REM Enterprise bewegt sich
+ 3070 A$=A0$:Z1=INT(S1):Z2=INT(S2):GOSUB 8670
+ 3110 GOSUB 9350:X=S1:Y=S2:Q4=Q1:Q5=Q2
+ 3170 FOR I=1 TO N:S1=S1+X1:S2=S2+X2
+ 3180 IF S1<1 OR S1>=9 OR S2<1 OR S2>=9 THEN 3500
+ 3240 S8=INT(S1)*24+INT(S2)*3-26:IF MID$(Q$,S8,2)="  " THEN 3360
+ 3320 S1=INT(S1-X1):S2=INT(S2-X2)
+ 3330 PRINT"Antrieb abgeschaltet in";
+ 3350 PRINT" Sektor";S1;",";S2:PRINT"wegen fehlerhafter Navigation!"
+ 3355 GOTO 3370
+ 3360 NEXT I:S1=INT(S1):S2=INT(S2)
+ 3370 A$=A4$:Z1=INT(S1):Z2=INT(S2):GOSUB 8670:GOSUB 3910:T8=1
+ 3430 IF W1<1 THEN T8=.1*INT(10*W1)
+ 3450 T=T+T8:IF T>T0+T9 THEN 6220
+ 3470 REM Pruefe, ob gestrandet, dann frage nach Befehl
+ 3480 GOTO 1980
+ 3490 REM Quadrantengrenzen ueberschritten
+ 3500 X=8*Q1+X+N*X1:Y=8*Q2+Y+N*X2:Q1=INT(X/8):Q2=INT(Y/8)
+ 3510 S1=INT(X-Q1*8):S2=INT(Y-Q2*8)
+ 3520 IF S1=0 THEN Q1=Q1-1:S1=8
+ 3590 IF S2=0 THEN Q2=Q2-1:S2=8
+ 3620 X5=0:IF Q1<1 THEN X5=1:Q1=1:S1=1
+ 3670 IF Q1>8 THEN X5=1:Q1=8:S1=8
+ 3710 IF Q2<1 THEN X5=1:Q2=1:S2=1
+ 3750 IF Q2>8 THEN X5=1:Q2=8:S2=8
+ 3790 IF X5=0 THEN 3860
+ 3800 PRINT"Lt. Uhura berichtet Meldung vom Flotten-Kommando:"
+ 3810 PRINT"  'Erlaubnis zum Versuch, die aeusseren Grenzen des"
+ 3820 PRINT"   Weltalls zu ueberschreiten, wird **verweigert**"
+ 3830 PRINT"   Schalte sofort Triebwerke ab!"
+ 3832 PRINT"Chefingenieur Scotty meldet: 'Maschinen auf"
+ 3835 PRINT"   Sektor";S1;",";S2;"des Quadranten";Q1;",";Q2;"abgeschaltet!"
+ 3850 IF T>T0+T9 THEN 6220
+ 3860 IF 8*Q1+Q2=8*Q4+Q5 THEN 3370
+ 3870 T=T+1:GOSUB 3910:GOTO 1320
+ 3900 REM Manoevrier-Energie
+ 3910 E=E-N-10:IF E>=0 THEN RETURN
+ 3930 PRINT"Schildenergie in die Triebwerke umgeleitet,"
+ 3935 PRINT"um das Manoever abzuschliessen!"
+ 3940 S=S+E:E=0:IF S<=0 THEN S=0
+ 3980 RETURN
+ 3990 REM Fernbereich scannen
+ 4000 IF D(3)<0 THEN PRINT"Langstreckenscanner ausser Funktion!":GOTO 1990
+ 4030 PRINT"Fernbereichsscan fuer Quadrant";Q1;",";Q2
+ 4040 O1$="-------------------":PRINT O1$
+ 4060 FOR I=Q1-1 TO Q1+1:N(1)=-1:N(2)=-2:N(3)=-3
+ 4070 FOR J=Q2-1 TO Q2+1
+ 4120 IF I>0 AND I<9 AND J>0 AND J<9 THEN N(J-Q2+2)=G(I,J):Z(I,J)=G(I,J)
+ 4180 NEXT J:FOR L=1 TO3:PRINT": ";:IF N(L)<0 THEN PRINT"*** ";:GOTO 4230
+ 4210 PRINT RIGHT$(STR$(N(L)+1000),3);" ";
+ 4230 NEXT L:PRINT":":PRINT O1$:NEXT I:GOTO 1990
+ 4250 REM Phaser
+ 4260 IF D(4)<0 THEN PRINT"Phaser nicht verfuegbar!":GOTO 1990
+ 4265 IF K3>0 THEN 4330
+ 4270 PRINT"Wissenschaftsoffizier Spock: 'Sensoren zeigen keine"
+ 4280 PRINT"    Feindschiffe im Quadranten'":GOTO 1990
+ 4330 IF D(8)<0 THEN PRINT"Computerfehler reduziert Genauigkeit!"
+ 4350 PRINT"Phaser auf Ziel eingerichtet!"
+ 4360 PRINT"Verfuegbare Energie ";E;"Einheiten"
+ 4370 INPUT "Mit wieviel Einheiten feuern";X:IF X<=0 THEN 1990
+ 4400 IF E<0 THEN 4360
+ 4410 E=E-X:IF D(8)<0 THEN X=X/(1-D(8)+RND(1))
+ 4450 H1=INT(X/K3):FOR I=1 TO 3:IF K(I,3)<=0 THEN 4670
+ 4480 H=INT((H1/FND(0))*(RND(1)+2)):GOSUB 9500
+ 4660 IF K9<=0 THEN 6370
+ 4670 NEXT I:GOSUB 6000:GOTO 1990
+ 4690 REM Photonentorpedo
+ 4700 IF P<=0 THEN PRINT"Alle Photonentorpedos verschossen!":GOTO 1990
+ 4730 IF D(5)<0 THEN PRINT"Torpedorohre ausser Funktion!":GOTO 1990
+ 4760 INPUT"Kurs des Photonentorpedos (1-9)";C1:IF C1=9 THEN C1=1
+ 4780 IF C1>=1 AND C1<9 THEN 4850
+ 4790 PRINT"Faehndrich Chekov berichtet: 'Falsche Kursdaten, Sir!'"
+ 4800 GOSUB 9700:GOTO 1990
+ 4850 GOSUB 9350:E=E-2:P=P-1:X=S1:Y=S2
+ 4910 PRINT"Torpedo-Bahn:";
+ 4920 X=X+X1:Y=Y+X2:X3=INT(X+.5):Y3=INT(Y+.5)
+ 4960 IF X3<1 OR X3>8 OR Y3<1 OR Y3>8 THEN 5490
+ 5000 PRINT TAB(16);X3;",";Y3:A$=A0$:Z1=X:Z2=Y
+ 5010 GOSUB 8830
+ 5050 IF Z3<>0 THEN 4920
+ 5060 A$=A1$:Z1=X:Z2=Y:GOSUB 8830:IF Z3=0 THEN 5210
+ 5150 FOR I=1 TO 3:IF X3=K(I,1) AND Y3=K(I,2) THEN 5190
+ 5180 NEXT:I=3
+ 5190 H=800*RND(1):GOSUB 9500:IF K9<=0 THEN 6370
+ 5200 GOSUB 6000:GOTO 1990
+ 5210 A$=A3$:Z1=X:Z2=Y:GOSUB 8830:IF Z3=0 THEN 5280
+ 5260 PRINT"Stern auf";X3;",";Y3;"absorbierte Torpedoenergie"
+ 5270 GOSUB 6000:GOTO 1990
+ 5280 A$=A2$:Z1=X:Z2=Y:GOSUB 8830:IF Z3=0 THEN 4760
+ 5330 PRINT"*** Sternenstation zerstoert ***":B3=B3-1:B9=B9-1
+ 5360 IF B9>0 OR K9>T-T0-T9 THEN 5400
+ 5370 PRINT"So geschieht es, Kapitaen!! Damit verlierst Du sofort"
+ 5380 PRINT"das Kommando und wirst zu 99 Sternentagen harter Arbeit"
+ 5385 PRINT"auf Cygnus strafversetzt!!":GOTO 6270
+ 5400 PRINT"Das Flottenkommando ueberprueft deine Daten fuer das"
+ 5410 PRINT"Militaergericht!":D0=0
+ 5430 Z1=X:Z2=Y:GOSUB 9560
+ 5470 GOSUB 6000:GOTO 1990
+ 5490 PRINT"Torpedo verfehlt Ziel":GOSUB 6000:GOTO 1990
+ 5520 REM Schild Kontrolle
+ 5530 IF D(7)<0 THEN PRINT"Schildkontrolle ausser Funktion!":GOTO 1990
+ 5560 PRINT"Verfuegbare Energie =";E+S
+ 5570 INPUT"Wieviele Einheiten fuer die Schilde ";X
+ 5580 IF X<0 OR S=X THEN PRINT"<Schilde unveraendert>":GOTO 1990
+ 5590 IF X<=E+S THEN 5630
+ 5600 PRINT"Schildkontrolle: 'Dies ist nicht das Finanzamt"
+ 5610 PRINT"der Foederation!'":PRINT"<Schilde unveraendert>":GOTO 1990
+ 5630 E=E+S-X:S=X:PRINT"Schirmkontrolle berichtet:"
+ 5660 PRINT"   'Schilde jetzt mit";INT(S);"Einheiten aufgeladen'"
+ 5670 GOTO 1990
+ 5680 REM Zerstoerungsueberwachung
+ 5690 IF D(6)>=0 THEN 5910
+ 5700 PRINT"Schadensbericht nicht verfuegbar":IF D0=0 THEN 1990
+ 5720 D3=0:FOR I=1 TO 8:IF D(I)<0 THEN D3=D3+.1
+ 5760 NEXT:IF D3=0 THEN 1990
+ 5780 PRINT:D3=D3+D4:IF D3>=1 THEN D3=.9
+ 5810 PRINT"Techniker sind fuer Reparaturen abrufbereit"
+ 5820 PRINT"Geschaetzte Reparaturdauer:";.01*INT(100*D3);"Sterntage"
+ 5840 PRINT"Genehmigst Du die Reparatur (j/n) ? ";:GET A$:PRINT A$
+ 5860 IF NOT(A$="j" OR A$="J") THEN 1990
+ 5870 FOR I=1 TO 8:IF D(I)<0 THEN D(I)=0
+ 5890 NEXT I:T=T+D3*(.8+RND(1))
+ 5910 PRINT:PRINT"Geraet";TAB(22);"Reparaturzustand"
+ 5920 FOR R1=1 TO 8:GOSUB 8790:PRINT G2$;TAB(25);INT((1+D(R1)/4)*100+.5);"%"
+ 5950 NEXT:PRINT:IF D0<>0 THEN 5720
+ 5980 GOTO 1990
+ 5990 REM Klingons schiessen
+ 6000 IF K3<=0 THEN RETURN
+ 6010 IF D0<>0 THEN PRINT"Schilde der Station schuetzen die Enterprise":RETURN
+ 6040 FOR I=1 TO 3:IF K(I,3)<=0 THEN 6200
+ 6060 H=INT((K(I,3)/FND(1))*(2+RND(1))):S=S-H:K(I,3)=K(I,3)/(1+RND(1))
+ 6080 GOSUB 9600:PRINT X$;" aus Sektor";K(I,1);",";K(I,2)
+ 6090 IF S<=0 THEN 6240
+ 6100 PRINT"    <Schilde auf";S;"Einheiten vermindert>":IF H<20 THEN 6200
+ 6120 IF RND(1)>.6 OR H/S <= .02 THEN 6200
+ 6140 R1=FNR(1):D(R1)=D(R1)-H/S-.5*RND(1):GOSUB 8790
+ 6170 PRINT"Schadenskontrolle berichtet: '";G2$;" durch Treffer beschaedigt'"
+ 6200 NEXT I:RETURN
+ 6210 REM Ende des Spiels
+ 6220 PRINT"Sterntag";T:GOTO 6270
+ 6240 PRINT:PRINT"Die Enterprise wurde zerstoert."
+ 6250 PRINT"Die Foederation wird erobert ":GOTO 6220
+ 6270 PRINT"Am Ende der Mission sind noch";K9;"Schlachtschiffe"
+ 6280 PRINT"der Klingonen uebrig."
+ 6290 PRINT:PRINT:IF B9=0 THEN 6360
+ 6310 PRINT"Die Foederation benoetigt fuer eine aehnliche Aufgabe"
+ 6320 PRINT"dringend einen faehigen Raumschiff-Kommandanten."
+ 6325 PRINT"Wenn ein Freiwilliger anwesend ist, moege er vorkommen"
+ 6330 INPUT"und 'jawohl' eingeben ";A$
+ 6335 IF A$="jawohl" OR A$="Jawohl" OR A$="JAWOHL" THEN 10
+ 6360 PRINT:PRINT"E N D E   D E S   S P I E L S":END
+ 6370 PRINT:PRINT"Gratuliere Kapitaen! Das letzte Schlachtschiff der"
+ 6380 PRINT"Klingonen, das die Foederation bedrohte, wurde zerstoert."
+ 6390 PRINT:PRINT"Deine Erfolgsbewertung ist:";INT(500*(K7/(T-T0))^2+(E+S)/10)
+ 6400 GOTO 6290
+ 6420 REM Nahbereichscanner
+ 6430 FOR I=S1-1 TO S1+1:FOR J=S2-1 TO S2+1
+ 6450 IF INT(I+.5)<1 OR INT(I+.5)>8 OR INT(J+.5)<1 OR INT(J+.5)>8 THEN 6540
+ 6490 A$=A2$:Z1=I:Z2=J:GOSUB 8830:IF Z3=1 THEN 6580
+ 6540 NEXT J,I:D0=0:GOTO 6650
+ 6580 D0=1:C$="gedockt":E=E0:P=P0
+ 6620 PRINT"Schilde fuer Anlegemaneuver gesenkt":S=0:GOTO 6720
+ 6650 IF K3>0 THEN C$="*ROT*":GOTO 6720
+ 6660 C$="GRUEN":IF E<E0*.1 THEN C$="GELB"
+ 6720 IF D(2)>=0 THEN 6770
+ 6730 PRINT:PRINT"*** Nahbereichssensoren ausgefallen ***"
+ 6740 PRINT:RETURN
+ 6770 O1$="----------------------------------":PRINT O1$
+ 6780 FOR I=1 TO 8:PRINT":";
+ 6800 FOR J=(I-1)*24+1 TO (I-1)*24+22 STEP 3
+ 6820 PRINT" ";MID$(Q$,J,3);:NEXT J
+ 6825 PRINT":";
+ 6830 ON I GOTO 6850,6900,6960,7020,7070,7120,7180,7240
+ 6850 PRINTTAB(37);"Sternentag";TAB(55);INT(T*10)*.1:GOTO 7260
+ 6900 PRINTTAB(37);"ZUSTAND";TAB(56);C$:GOTO 7260
+ 6960 PRINTTAB(37);"Quadrant";TAB(55);Q1;",";Q2:GOTO 7260
+ 7020 PRINTTAB(37);"Sektor";TAB(55);S1;",";S2:GOTO 7260
+ 7070 PRINTTAB(37);"Photonentorpedos";TAB(55);INT(P):GOTO 7260
+ 7120 PRINTTAB(37);"Gesamtenergie";TAB(55);INT(E+S):GOTO 7260
+ 7180 PRINTTAB(37);"Schilde";TAB(55);INT(S):GOTO 7260
+ 7240 PRINTTAB(37);"Klingonenkreuzer";TAB(55);INT(K9)
+ 7260 NEXT I:PRINT O1$:RETURN
+ 7280 REM Computerabfrage
+ 7290 IF D(8)<0 THEN PRINT"Computer ausser Funktion!":GOTO 1990
+ 7320 PRINT"Computer aktiv - Kommando (0-5) ? ";:GET A$
+ 7325 IF A$=CHR$(13) THEN PRINT:GOTO 1990
+ 7330 A=ASC(A$)-48:IF A<0 OR A>5 THEN PRINT:GOTO 7360
+ 7335 PRINTA$
+ 7350 H8=1:ON A+1 GOTO 7540,7900,8070,8500,8150,7400
+ 7360 PRINT"Verfuegbare Funktionen des Computers:"
+ 7370 PRINT"  0  Zusammenfassende Uebersicht"
+ 7372 PRINT"  1  Zustandsbericht"
+ 7374 PRINT"  2  Feuerleitrechner fuer Photonentorpedos"
+ 7376 PRINT"  3  Navigationsdaten fuer Sternenbasis"
+ 7378 PRINT"  4  Richtungs/Entfernungsrechner"
+ 7380 PRINT"  5  Sternkarte":PRINT:GOTO 7320
+ 7390 REM Aufstellung der Sternkarte
+ 7400 H8=0:G5=1:PRINT"               S T E R N K A R T E":GOTO 7550
+ 7530 REM Zusammenfassende Uebersicht
+ 7540 REM PRINT"Moechtest Du einen Ausdruck (j/n) ? ";:GET A$
+ 7542 REM PRINT A$:IF A$<>"j" AND A$<>"J" THEN 1990
+ 7543 PRINT:PRINTTAB(7);
+ 7544 PRINT"Computerbericht fuer Quadrant";Q1;",";Q2
+ 7546 PRINT
+ 7550 PRINT"       1      2      3      4      5      6      7      8"
+ 7560 O1$="     -----  -----  -----  -----  -----  -----  -----  -----"
+ 7570 PRINT O1$:FOR I=1 TO 8:PRINT I;:IF  H8=0 THEN 7740
+ 7630 FOR J=1 TO 8:PRINT"   ";:IF Z(I,J)=0 THEN PRINT "*** ";:GOTO 7720
+ 7700 PRINT RIGHT$(STR$(Z(I,J)+1000),3);" ";
+ 7720 NEXT J:GOTO 7850
+ 7740 Z4=I:Z5=1:GOSUB 9030:J0=INT(15-.5*LEN(G2$)):PRINTTAB(J0);G2$;
+ 7800 Z5=5:GOSUB 9030:J0=INT(39-.5*LEN(G2$)):PRINTTAB(J0);G2$;
+ 7850 PRINT:PRINT O1$:NEXT I:PRINT:GOTO 1990
+ 7890 REM Zustandsbericht
+ 7900 PRINT"   Zustandsbericht:":X$=""
+ 7940 PRINT"Klingonkreuzer:";K9
+ 7960 PRINT"Auftrag muss in";.1*INT((T0+T9-T)*10);"Sternentagen";
+ 7961 PRINT" beendet sein"
+ 7970 X$="en":IF B9<2 THEN X$="":IF B9<1 THEN 8010
+ 7980 PRINT"Die Foederation unterhaelt";B9;"Sternenstation";X$;" im Weltraum"
+ 7990 GOTO 5690
+ 8010 PRINT"Wegen deiner Dummheit bleibst Du allein im Weltraum!"
+ 8020 PRINT"Es ist keine Sternenbasis uebriggeblieben":GOTO 5690
+ 8060 REM Feuerleitrechner
+ 8070 IF K3<=0 THEN 4270
+ 8080 X$="":IF K3>1 THEN X$="en"
+ 8090 PRINT"Enterprise zu Klingon-Schlachtschiff";X$
+ 8100 H8=0:FOR I=1 TO 3:IF K(I,3)<=0 THEN 8480
+ 8110 W1=K(I,1):X=K(I,2)
+ 8120 C1=S1:A=S2:GOTO 8220
+ 8150 PRINT"Richtungs/Entfernungsrechner:"
+ 8160 PRINT"Du bist im Quadranten";Q1;",";Q2;" Sektor";S1;",";S2
+ 8170 INPUT"Anfangskoordinaten (X,Y)";C1,A
+ 8200 INPUT"Endkoordinaten     (X,Y)";W1,X
+ 8220 X=X-A:A=C1-W1:IF X<0 THEN 8350
+ 8250 IF A<0 THEN 8410
+ 8260 IF X>0 THEN 8280
+ 8270 IF A=0 THEN C1=5:GOTO 8290
+ 8280 C1=1
+ 8290 IF ABS(A)<=ABS(X) THEN 8330
+ 8310 PRINT"Richtung =";C1+(((ABS(A)-ABS(X))+ABS(A))/ABS(A)):GOTO 8460
+ 8330 PRINT"Richtung =";C1+(ABS(A)/ABS(X)):GOTO 8460
+ 8350 IF A>0 THEN C1=3:GOTO 8420
+ 8360 IF X<>0 THENC1=5:GOTO 8290
+ 8410 C1=7
+ 8420 IF ABS(A)>=ABS(X) THEN 8450
+ 8430 PRINT"Richtung =";C1+(((ABS(X)-ABS(A))+ABS(X))/ABS(X)):GOTO 8460
+ 8450 PRINT"Richtung =";C1+(ABS(X)/ABS(A))
+ 8460 PRINT"Entfernung =";SQR(X^2+A^2):IF H8=1 THEN 1990
+ 8480 NEXT I:GOTO 1990
+ 8500 IF B3<>0 THEN PRINT"Von der Enterprise zur Sternenbasis:"
+ 8505 W1=B4:X=B5:GOTO 8120
+ 8510 PRINT"Mr. Spock: 'Sensoren zeigen keine Sternenbasis "
+ 8520 PRINTSPC(12);"in diesem Quadranten'":GOTO 1990
+ 8580 REM Finde leeren Raum im Quadranten
+ 8590 R1=FNR(1):R2=FNR(1):A$=A0$:Z1=R1:Z2=R2:GOSUB 8830
+ 8595 IF Z3=0 THEN 8590
+ 8600 RETURN
+ 8660 REM Gib Quadranten-Daten in Feld ein
+ 8670 S8=INT(Z2-.5)*3+INT(Z1-.5)*24+1
+ 8675 IF LEN(A$)<>3 THEN PRINT"Falsche Quadrantendaten":END
+ 8680 IF S8=1 THEN Q$=A$+RIGHT$(Q$,189):RETURN
+ 8690 IF S8=190 THEN Q$=LEFT$(Q$,189)+A$:RETURN
+ 8700 Q$=LEFT$(Q$,S8-1)+A$+RIGHT$(Q$,190-S8):RETURN
+ 8780 REM Drucke Geraetenamen
+ 8790 ON R1 GOTO 8792,8794,8796,8798,8800,8802,8804,8806
+ 8792 G2$="Hauptantrieb":RETURN
+ 8794 G2$="Nahbereichssensoren":RETURN
+ 8796 G2$="Langstreckenscanner":RETURN
+ 8798 G2$="Phaserkontrolle":RETURN
+ 8800 G2$="Photonentorpedo-Rohre":RETURN
+ 8802 G2$="Schadenskontrolle":RETURN
+ 8804 G2$="Schildkontrolle":RETURN
+ 8806 G2$="Schiffscomputer":RETURN
+ 8820 REM Zeichenfolgenvergleich im Quadrantenfeld
+ 8830 Z1=INT(Z1+.5):Z2=INT(Z2+.5):S8=(Z2-1)*3+(Z1-1)*24+1:Z3=0
+ 8890 IF MID$(Q$,S8,3) <> A$ THEN RETURN
+ 8900 Z3=1:RETURN
+ 9010 REM Quadrantennamen in g2$ von z4,z5 (=q1,q2)
+ 9020 REM mit g5=1 um nur Gebietsnamen zu erhalten
+ 9030 IF Z5<=4 THEN ON Z4 GOTO 9040,9050,9060,9070,9080,9090,9100,9110
+ 9035 GOTO 9120
+ 9040 G2$="Antares":GOTO 9210
+ 9050 G2$="Rigel":GOTO 9210
+ 9060 G2$="Procyon":GOTO 9210
+ 9070 G2$="Vega":GOTO 9210
+ 9080 G2$="Canopus":GOTO 9210
+ 9090 G2$="Altair":GOTO 9210
+ 9100 G2$="Sagittarius":GOTO 9210
+ 9110 G2$="Pollux":GOTO 9210
+ 9120 ON Z4 GOTO 9130,9140,9150,9160,9170,9180,9190,9200
+ 9130 G2$="Sirius":GOTO 9210
+ 9140 G2$="Deneb":GOTO 9210
+ 9150 G2$="Capella":GOTO 9210
+ 9160 G2$="Beteigeuze":GOTO 9210
+ 9170 G2$="Aldebaran":GOTO 9210
+ 9180 G2$="Regulus":GOTO 9210
+ 9190 G2$="Arcturus":GOTO 9210
+ 9200 G2$="Spica"
+ 9210 IF G5<>1 THEN ON Z5 GOTO 9230,9240,9250,9260,9230,9240,9250,9260
+ 9220 RETURN
+ 9230 G2$=G2$+" I":RETURN
+ 9240 G2$=G2$+" II":RETURN
+ 9250 G2$=G2$+" III":RETURN
+ 9260 G2$=G2$+" IV":RETURN
+ 9299 REM Zerstoerungsbericht
+ 9300 PRINT"Schadensbericht:";:RETURN
+ 9349 REM Bewegungskoordinaten
+ 9350 X1=C(C1,1)+(C(C1+1,1)-C(C1,1))*(C1-INT(C1))
+ 9360 X2=C(C1,2)+(C(C1+1,2)-C(C1,2))*(C1-INT(C1)):RETURN
+ 9499 REM Treffer auf klingon
+ 9500 IF H>.15*K(I,3) THEN 9520
+ 9510 PRINT"Sensoren zeigen keine Beschaedigung des Gegners auf";
+ 9515 PRINTK(I,1);",";K(I,2):RETURN
+ 9520 K(I,3)=K(I,3)-H:PRINT"Klingon auf Sektor";K(I,1);",";K(I,2);
+ 9525 PRINT"mit";INT(H+.5);"Einheiten getroffen"
+ 9530 IF K(I,3)<=0 THEN GOTO 9548
+ 9540 PRINT"  (Sensoren zeigen";INT(K(I,3)+.5);
+ 9542 PRINT"Einheiten restliche Schildenergie an)"
+ 9545 RETURN
+ 9548 PRINT"*** Klingon zerstoert ***"
+ 9550 K(I,3)=0:K3=K3-1:K9=K9-1:Z1=K(I,1):Z2=K(I,2)
+ 9560 A$=A0$:GOSUB 8670
+ 9570 G(Q1,Q2)=K3*100+B3*10+S3:Z(Q1,Q2)=G(Q1,Q2)
+ 9580 RETURN
+ 9600 X$="Leichter Treffer"
+ 9610 IF H>40 THEN X$="Treffer"
+ 9620 IF H> 80 THEN X$="Schwerer Treffer"
+ 9630 RETURN
+ 9700 PRINT:REM Kursrosette
+ 9720 PRINT"Kursrosette       4  3  2"
+ 9722 PRINT"===========        . . ."
+ 9724 PRINT"Zwischenwerte       ..."
+ 9726 PRINT"sind zulaessig  5 ---*--- 1"
+ 9728 PRINT"                    ..."
+ 9730 PRINT"                   . . ."
+ 9732 PRINT"                  6  7  8"
+ 9734 PRINT:RETURN
+READY.

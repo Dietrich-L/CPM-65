@@ -1,0 +1,181 @@
+VED.BLK V2022
+
+SCR # 3
+  0 ( FULL SCREEN EDITOR      D. Lausberg 31.8.97      SCR #1 )
+  1 VOCABULARY VED immediate VED DEFINITIONS
+  2 decimal
+  3 1 VARIABLE &MODE    1 VARIABLE &CUR
+  4 1 variable &tag1    1 variable &tag2
+  5 0 variable &BUF
+  6 9 constant ht       8 constant bs
+  7 28 constant home
+  8 1023 constant cps  15 constant lps
+  9 : nbs 0 do bs emit loop ;
+ 10
+ 11 : CLS 12 EMIT ;
+ 12 : nvt dup 0= if drop else 0 do 11 emit loop endif ;
+ 13 : xcr 13 emit lps < if 10 emit endif ;
+ 14 : .L (LINE) -trailing 1 max type ;
+ 15 -->
+
+SCR # 4
+  0 ( FULL SCREEN EDITOR                                SCR #2 )
+  1 : curpos &cur @ ;
+  2 : !cur &cur ! ;
+  3 : >line# c/l / ;
+  4 : line#> c/l * ;
+  5 : line@ scr @ (line) ;
+  6 : bufpos curpos >line# line@ drop curpos c/l mod +
+  7     dup &BUF ! ;
+  8 : +1BUF &BUF @ 1+ &BUF ! ;
+  9 : +1cur curpos 1+ dup cps > if drop cps bs emit endif !cur ;
+ 10 : -1cur curpos 1 - dup 0 < if drop 0 ht emit endif !cur ;
+ 11 : #toeol c/l mod c/l swap - ;
+ 12
+ 13 -->
+ 14
+ 15
+
+SCR # 5
+  0 ( Full Screen Editor                                  SCR #3 )
+  1 : ?prt dup bl < swap 126 > or 0= ;
+  2 : nop ;
+  3 : exec swap 2 * + @ execute ;
+  4
+  5
+  6 : larrow -1cur bs emit ;
+  7 : rarrow +1cur ht emit ;
+  8 : uarrow curpos c/l - dup 0 < if drop curpos else
+  9   11 emit endif !cur ;
+ 10 : darrow curpos c/l + dup cps > if drop curpos else
+ 11   10 emit endif !cur ;
+ 12
+ 13 : imode &mode  @ -1 xor &mode ! ; ( toggle insert mode )
+ 14
+ 15 -->
+
+SCR # 6
+  0 ( Full Screen Editor                               SCR #4 )
+  1 : distoeos 13 emit dup line#> !cur lps 1+ over do i scr @
+  2   .L i xcr loop 15 swap - nvt ;
+  3 : updscr cls 0 distoeos ;
+  4 : scr-ini updscr ;
+  5 : nxtblk 1 scr +! scr-ini ;
+  6 : lstblk scr @ 1 - dup 1 < if drop 1 endif
+  7   scr ! scr-ini ;
+  8 : quit-ed cls ." edit complete" flush forth quit ;
+  9
+ 10 : clrline line@ blanks update ;
+ 11 : ?empty line@ -trailing swap drop 0= ;
+ 12 : -move line@ cmove update ;
+ 13 : exp dup 1 - 14 do i line@ drop i 1+ -move -1 +loop
+ 14   clrline ;
+ 15 -->
+
+SCR # 7
+  0 ( Full Screen Editor                                 SCR #5 )
+  1 : shrink lps dup rot do i 1+ line@ drop i -move loop
+  2   clrline ;
+  3 : clear-page 16 0 do I clrline loop updscr ;
+  4 : copy b/scr * offset @ + swap b/scr * b/scr over + swap
+  5   do dup I block 2 - ! 1+ update loop drop flush ;
+  6
+  7 : insertline lps ?empty if dup exp distoeos
+  8   endif ;
+  9 : deleteline dup shrink distoeos ;
+ 10 : clp clear-page ;
+ 11 : iline curpos >line# insertline ;
+ 12 : dline curpos >line# deleteline ;
+ 13
+ 14 : tab 8 curpos 8 mod - 0 do +1cur ht emit loop ;
+ 15 -->
+
+SCR # 8
+  0 ( Full Screen Editor                              SCR #6 )
+  1 : #in pad 10 expect 0 0 pad 1 - (number) drop drop ;
+  2 : edits cls ."   Edit SCR #: " #in scr ! scr-ini ;
+  3
+  4 : settag scr @ key dup 49 = if swap &tag1 ! endif
+  5                        50 = if &tag2 ! else drop endif ;
+  6 : totag key dup 49 = if &tag1 @ scr ! scr-ini endif
+  7                 50 = if &tag2 @ scr ! scr-ini endif ;
+  8
+  9 : REP pad 1+ swap -move ;
+ 10 : holdln curpos >line# line@ pad c! pad 1+ c/l cmove ;
+ 11 : putln curpos >line# dup &mode @ if
+ 12         lps ?empty if dup exp REP else drop endif
+ 13     else REP endif distoeos ;
+ 14
+ 15 -->
+
+SCR # 9
+  0 ( Full Screen Editor                                 SCR #7 )
+  1 : ret &mode @ if iline else curpos >line# 1+ dup 15 <
+  2   if 10 emit endif 15 min line#> !cur 29 emit endif ;
+  3
+  4 : delchar bufpos dup >R dup 1+ swap curpos #toeol 1 - dup
+  5   >R cmove R> R> + bl swap c! update ;
+  6 : distoeol bufpos swap #toeol -trailing 1+ swap
+  7   over type nbs ;
+  8 : dchar delchar curpos distoeol ;
+  9 : inschar dup >R here over over curpos #toeol 1 -
+ 10   dup >R cmove swap 1+ R> cmove R> c! update ;
+ 11 : ins-page scr @ eom @ lo - 1024 / 4 +
+ 12   do i 1 - i copy -1 +loop clear-page ;
+ 13 : RUBOUT larrow dchar ;
+ 14 : .mode 18 spaces &mode @ if ." INSERT " else 7 spaces endif ;
+ 15 -->
+
+SCR # 10
+  0 ( Full Screen Editor                                 SCR #8 )
+  1 : help cls 15 spaces ." Commands" .mode ."   SCR# " scr @ . cr
+  2   ."  CTL-E  Cursor up           ESC    Help" cr
+  3   ."  CTL-X  Cursor down         CTL-V  Insert on/off" cr
+  4   ."  CTL-D  Cursor right        CTL-G  Delete chr" cr
+  5   ."  CTL-S  Cursor left         CTL-Y  Delete line" cr
+  6   ."  CTL-R  Page up             CTL-N  Insert new page" cr
+  7   ."  CTL-A  Page down           CTL-B  Edit SCR #" cr
+  8   ."  CTL-F  Tab                 CTL-Z  Clear page" cr
+  9   ."  CTL-V  Set tag to SCR      CTL-O  Copy line to PAD" cr
+ 10   ."  CTL-T  Goto tagged SCR     CTL-P  Put PAD to line" cr
+ 11   cr
+ 12   ."                             CTL-Q  Quit editor" cr
+ 13   cr
+ 14   ." Press key to continue " key drop updscr ;
+ 15 -->
+
+SCR # 11
+  0 ( Full Screen Editor                                 SCR #9 )
+  1 0 variable cmd -2 allot
+  2   ] nop    nxtblk  edits  nop    rarrow uarrow tab      dchar
+  3     larrow rarrow  darrow uarrow nop    ret    ins-page holdln
+  4     putln  quit-ed lstblk larrow totag  settag imode    nop
+  5     darrow dline   clp    help   updscr nop    nop      nop [
+  6
+  7 : command dup 127 = if RUBOUT else cmd exec endif ;
+  8 : insertoff key dup ?prt if dup emit curpos 255 and
+  9     if &BUF @ else bufpos endif C! +1BUF +1CUR update
+ 10    else command bufpos drop endif ;
+ 11 : inserton key dup ?prt if dup emit &buf @ inschar +1cur
+ 12   curpos distoeol update else command bufpos drop then ;
+ 13 : vedit decimal 0 &mode ! 3 scr ! scr-ini
+ 14   begin &mode @ if inserton else insertoff then again ;
+ 15 -->
+
+SCR # 12
+  0 ( Full Screen Editor                                 SCR #10 )
+  1 FORTH Definitions
+  2 : e ved vedit ;
+  3 : new LO EOM ! 3 scr ! ved 16 0 do I clrline loop vedit ;
+  4
+  5
+  6 latest    12 +origin !  ( top NFA )
+  7 ( here      28 +origin !  ( Fence )
+  8 here      30 +origin !  ( DP )
+  9 ' VED      6 +origin !  ( Voc-Link )
+ 10 ( here      Fence ! )    ;S
+ 11
+ 12
+ 13
+ 14
+ 15
