@@ -13,12 +13,12 @@ System Requirements
 min 1 Floppy drive
 Serial-I/O
 
-My system is a heavily modified and expanded Elektor Junior Computer. For system components and memory map see separate docs
+My system is a heavily modified and expanded Elektor Junior Computer with 57 kB RAM. For system components and memory map see separate docs
 
 System Structure
 --------------------
 CPM-65 consists of 3 layers:
-- BIOS Basic I/O system - currently 3 kB, could be reduced to 2kB by removing SCSI and I2C drivers. Drives can be A-H non consecutive.
+- BIOS Basic I/O system - currently 3 kB, could be reduced to 2kB by removing SCSI and I2C drivers. Drives can be A-H non consecutive. I/O console is serial TTY 1200 - 9600 Baud
 - BDOS Basic disc operating system - this is the CPM-65 kernal. Size 2 kB
 - CCP Console command program - a simple console which only allows to invoke CPM-65 programs. No resident commands. Size 1 kB
 
@@ -80,6 +80,7 @@ Other related systems
 When I started the development of cpm-65, I was blissfully unaware of any other aproaches. However there are some, most notably:
 - DOS/65 by Richard Leary. There is a limited compatibility
 - OUP/M  by Jiang - Xiong Shao. Published 1983, no further development
+- CPM65 by David Given, published 2022
 
 
 Redistribution
