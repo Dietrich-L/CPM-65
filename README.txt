@@ -20,7 +20,7 @@ System Structure
 CPM-65 consists of 3 layers:
 - BIOS Basic I/O system - currently 3 kB, could be reduced to 2kB by removing SCSI and I2C drivers. Drives can be A-H non consecutive.
 - BDOS Basic disc operating system - this is the CPM-65 kernal. Size 2 kB
-- CCP Console command program - a simple consolewhich only allows to invoke CPM-65 programs. No resident commands. Size 1 kB
+- CCP Console command program - a simple console which only allows to invoke CPM-65 programs. No resident commands. Size 1 kB
 
 File & Disc Format
 ----------------------
@@ -65,7 +65,7 @@ SYSGEN		1.0
 TYPE		1.6
 XMODEM		1.2
 
-All software is supplies as assembler files to be assembled with the CPM-65 assembler. In case, you wish to use a different assembler, the syntax has to be adapted accordingly.
+All software is supplied as assembler files to be assembled with the CPM-65 assembler. In case you wish to use a different assembler, the syntax has to be adapted accordingly.
 
 Documentation
 --------------------

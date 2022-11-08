@@ -1,0 +1,15 @@
+;TEST.APP
+
+APPLABEL LDA #0
+
+;Fehler
+
+	LDA #$6/0	;DIVISION BY 0 ERROR!
+	LDA #$FFFF/FFFF	;NO VALUE
+	DS Nix,Nix	;no value
+
+;PSEUDO OPCODES
+
+	END	;ENDE
+
+;Post mortem!
