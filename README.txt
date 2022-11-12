@@ -73,7 +73,7 @@ Currently the documentation of CPM-65 is sparse and only for my personal needs. 
 
 Errors
 --------------------
-The CPM-65 system has now seen more than 40 years of service. Currently there are no known errors. However, since an error free software does not exist, please report any errors in the ISSUE section
+The CPM-65 system has now seen more than 30 years of service. Currently there are no known errors. However, since an error free software does not exist, please report any errors in the ISSUE section
 
 Other related systems
 ---------------------
