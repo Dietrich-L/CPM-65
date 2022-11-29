@@ -6,6 +6,8 @@
 ;V1.2	13.01.96	G_FIX Error corrected
 ;V1.3	17.01.96	upper case conversion, PI
 ;V1.4	06.03.96	printer,disk support
+;V1.5	12.06.22	BASIC filename implemented
+Version = $15
 
 ;Parameters
 ZERO	= $00		;ZERO PAGE
@@ -199,7 +201,25 @@ INIT2	LDA Z_TAB,Y
 	LDA #$01	;PRESET STACKTOP
 	STA STACK+$FC
 	STA STACK+$FD
-	JMP WARM
+	LDY #1
+	LDA #SP
+	CMP (FCB1),Y
+	BEQ INIT3	;check for filename to execute
+	JSR SETFCB4
+	JSR LOAD_IMM	;load BASIC file
+	JSR BAS_RST
+	JSR L_INS	;BASIC RESET AND REBIND LINES
+	LDA #'R		;put 'RUN in INBUF
+	STA INBUF
+	LDA #'U
+	STA INBUF+1
+	LDA #'N
+	STA INBUF+2
+	LDX #3
+	JSR ST_EOT	;put EOT in INBUF
+	JMP MAIN7	;execute RUN command
+
+INIT3	JMP WARM
 
 ;---   ZERO PAGE BYTES   ---
 
@@ -218,10 +238,11 @@ Z_TABX
 
 ;---   STARTUP MESSAGES  ---
 
-INITM	DB CLS,'Junior BASIC V1.4   ',EOT
+INITM	DB CLS,'Junior BASIC V'
+	DB VERSION/16+$30,'.',VERSION*$1000/$1000+$30,'     ',EOT
 BYTFRE	DB ' Bytes free',CR,LF,EOT
 
-;until here approx. 150 byte input buffer
+;until here approx. 200 bytes input buffer
 
 ;---  COMMAND TABLE ---
 
