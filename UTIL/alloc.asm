@@ -23,6 +23,8 @@
 ;		changed message sequence
 ;	16 February 2015 (2.08)
 ;		moved notasp
+;	30 November 2022 (2.09)
+;		nr of free blocks corrected
 ;Syntax is ALLOC x where x is the drive (A to H)
 ;If x is blank then the default drive is used.
 ;users may want to change the value of width
@@ -181,7 +183,10 @@ DONE	JSR	CRLF		;send two
 	LDA #3SP
 	LDY #3SP/256
 	JSR msgout
-	jsr	sndfre
+	INC FREE		;correction for dummy block created
+	BNE done1
+	INC FREE+1
+DONE1	jsr	sndfre
 	lda	#' '		;send a space
 	jsr	chrout
 	;now display block size
@@ -344,7 +349,7 @@ blkms4	DB	'16',EOT
 ;block size message pointers
 blktbl	DW	blkms0,blkms1,blkms2,blkms3,blkms4
 ;opening message
-opnmsg	DB	CR,LF,'CPM-65 DISK ALLOCATION MAP V2.08',CR,LF,CR,LF
+opnmsg	DB	CR,LF,'CPM-65 DISK ALLOCATION MAP V2.09',CR,LF,CR,LF
 	DB '   01234567890123456789012345678901'
 	DB	CR,LF,EOT
 nxtmsg	DB	cr,lf,'PRESS SPACE BAR TO SEE NEXT PAGE',EOT
