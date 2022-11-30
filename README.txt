@@ -34,9 +34,9 @@ The Disc format is typically 40 tracks/ 8 sectors/ 256 byte/sector. It is define
 Software List
 ---------------------
 Name		Version
-ALLOC		2.8
+ALLOC		2.9
 ASM		2.5
-BASIC		1.4
+BASIC		1.5
 BDOS		2.2
 BIOS		3.0
 BOOT		1.7
