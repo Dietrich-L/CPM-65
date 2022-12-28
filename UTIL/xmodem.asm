@@ -4,8 +4,10 @@
 ;V1.0	25.01.21	receive only
 ;V1.1	08.05.21	8-Bit I/O
 ;V1.2	20.03.22	I/O more stable
+;V1.3	23.12.22	correct file length
+;V2.0	27.12.22	send & receive
 
-VERSION	= $12		;VERSION NUMBER
+VERSION	= $20		;VERSION NUMBER
 ;================================================
 
 ;KONSTANTEN
@@ -27,10 +29,11 @@ ESC	= $1b		; ESC to exit
 
 ;ERROR CODES
 
+EOF	= $D7
 NOTFND	= $DD
 XModem_terminated = $80
-
 FName_miss = $83		;Filename missing
+NO_ARG	= $84
 FILE_TOO_LONG = $85
 X_CAN	= $86
 X_BLK	= $87		;wrong block nr
@@ -67,13 +70,16 @@ TPA	= $0200
 PAGES	= 0
 LENGTH	= 1
 ERRNO	= 2		;ERROR NR
-
+PNT	= 3
+SWITCH	= 4
 CRC	= 5		; CRC lo byte  (two byte variable)
 PTR	= 7		; data pointer (two byte variable)
 blkno	= 9		; block number 
 retry	= 10		; retry counter 
 retry2	= 11		; 2nd counter
 STR	= 12		; pointer for STR_OUT
+errcnt	= 14		; error counter for resend
+lastblk	= 15		;flag for last block to be sent
 
 CCPV	= $DE
 BDOS	= $F0
@@ -88,22 +94,25 @@ STATUS	= $F3		;STATUS-FLAG  ^P/^S/./. BAT/DIR/FCB/DEL
 START	LDA #STARTM
 	LDY #STARTM/256
 	JSR PRTSTR
-	LDY #1
-	LDA (FCB1),Y
-	CMP #SP			;check for filename
-	BEQ STERR1
-	JSR FOPEN
+	JSR INIT		;initialize vars, check for switch
+	BCS STERR
+	BIT SWITCH
+	BPL XMODSEND
+	JSR FOPEN		;send file
 	BCS STERR
 	JSR XMODEM
 	BCS STERR
-	SEC	
+	SEC
+	LDA PTR
+	SBC #LOMEM
+	STA PTR	
 	LDA PTR+1
 	SBC #LOMEM/256
 	STA LENGTH
 	LDA PTR
 	BEQ START2
 	INC LENGTH
-START2	LDA #$FF
+START2	LDA #0
 	STA PAGES
 	JSR SETDMA
 
@@ -115,23 +124,87 @@ START3	LDX #WRITE
 	LDX #CLOSE
 	JSR BDOS
 	BCS STERR
-	LDA #SUCCESS
+START4	LDA #SUCCESS
 	LDY #SUCCESS/256
 	JSR STR_OUT
-	LDA #$20
+BOOT	LDA #$20		;deblock chr input
 	STA SCRATCH+$64
-
-BOOT	LDX #0
+	LDX #0
 	JMP BDOS	
 
 STERR1	LDA #FName_miss		;Filename missing
 STERR	JSR ERROR		;XMODEM terminated
 	LDA #BREAK
 	LDY #BREAK/256
-	JSR PRTSTR
+	JSR STR_OUT
 	JMP BOOT
 
+
+XMODSEND			;XMODEM send file
+	LDX #OPEN
+	JSR BDOS
+	BCS STERR
+	LDA #0
+	STA LENGTH
+	JSR SETDMA
+XMS1	LDX #READ
+	JSR BDOS
+	BCS XMS2
+	INC LENGTH
+	INC DMA+1
+	CMP BDOS+2
+	BCC XMS1
+	LDA #FILE_TOO_LONG
+	RTS
+
+XMS2	CMP #EOF
+	BNE STERR
+	JSR XMSEND
+	BCC START4
+	BCS STERR
+
 ;=======================================
+INIT	LDY #1
+	LDA (FCB1),Y
+	CMP #SP			;check for filename
+	BEQ INIT9
+	LDY #0
+	LDA (DMA),Y		;CHECK FOR SWITCH
+	CMP #$01
+	BEQ INIT8
+	STA PNT
+INIT3	INY
+	CPY PNT
+	BCS INIT8
+	LDA (DMA),Y
+	CMP #'/			;SWITCH?
+	BNE INIT3
+	INY
+	CPY PNT
+	BCS INIT8
+	LDA (DMA),Y		;GET SWITCH
+	LDX #0
+INIT4	CMP SWTAB,X
+	BEQ INIT5
+	INX
+	INX
+	CPX #SWTABX-SWTAB
+	BCC INIT4
+
+INIT8	LDA #NO_ARG		;no valid argument
+	SEC
+	RTS
+
+INIT5	INX
+	LDA SWTAB,X
+	STA SWITCH
+	CLC
+	RTS
+
+INIT9	LDA #FName_miss		;no filename
+	SEC
+	RTS
+
 
 FOPEN	LDX #OPEN		;open file to be transferred
 	JSR BDOS
@@ -177,7 +250,7 @@ INCDMA	INC DMA+1
 
 ;==========================================
 
-XModem		lda	#$01
+XModem		lda	#$01		;receive file
 		sta	blkno		; set block # to 1
 		LDA #LOMEM		;set PTR to LOMEM for file storage
 		STA PTR
@@ -190,7 +263,7 @@ StartCrc	ldy	#$FF
                	sty	crc
 		sty	crc+1		; init CRC value to $0000	
 		lda	#'C		; C start transmission CRC option
-		jsr	Put_Chr		; send it
+		jsr	PUT_CHR		; send it
 		jsr	GET_BYTE	; wait for input
                	bcc	GotByte		; byte received, process it
 		bcs	StartCrc	; resend 'C
@@ -244,12 +317,7 @@ GoodBlk1	eor	#$ff		; 1's comp of block #
                 SEC			; unexpected block # - fatal error
 		RTS
 	
-GoodBlk2	ldy	#$02		; 
-CalcCrc		lda	Rbuff,Y		; calculate the CRC for the 128 bytes of data	
-		jsr	UpdCrc		; could inline sub here for speed
-		iny			;
-		cpy	#$82		; 128 bytes
-		bne	CalcCrc		;
+GoodBlk2	JSR CalcCRC
 		lda	Rbuff,Y		; get hi CRC from buffer
 		cmp	crc+1		; compare to calculated hi CRC
 		bne	BadCrc		; bad crc, send NAK
@@ -278,7 +346,7 @@ IncBlk		inc	blkno		; done.  Inc the block #
 		CPX BDOS+2
 		BCS FTL
 		lda	#ACK		; send ACK
-		jsr	Put_Chr		;
+		jsr	PUT_CHR		;
 		jmp	StartBlk	; get next block
 
 FTL		LDA #File_too_long
@@ -286,10 +354,127 @@ FTL		LDA #File_too_long
 		RTS
 
 Done		lda	#ACK		; last block, send ACK and exit.
-		jsr	Put_Chr		;
+		jsr	PUT_CHR		;
 		jsr	Flush		; get leftover characters, if any
 		CLC
-		rts			;
+		rts
+
+
+;^^^^^^^^^^^^^^^^^^^^^^ Start of XModem send ^^^^^^^^^^^^^^^^^^^^^^
+
+;
+; Enter this routine with the beginning address stored in the zero page address
+; pointed to by ptr & ptrh and the ending address stored in the zero page address
+; pointed to by eofp & eofph.
+
+XMSEND		lda	#$00		;
+		sta	errcnt		; error counter set to 0
+		sta	lastblk		; set flag to false
+		LDX DMA+1
+		LDY DMA			;set PTR = DMA - 1
+		BNE XMSEND1
+		DEX
+XMSEND1		DEY
+		STY PTR			;PTR is end of file
+		STX PTR+1
+		JSR SETDMA		;reset DMA = beginning adr
+		JSR INITCOM
+		JSR FLUSH
+		lda	#$01		;
+		sta	blkno		; set block # to 1
+Wait4CRC	LDA #'.			;while waiting
+		JSR PUT_CHR		;print .
+		lda	#$ff		; 3 seconds
+		sta	retry2
+		jsr	GET_BYTE
+		BCS	Wait4CRC	; wait for something to come in...
+		cmp	#'C		; is it the "C" to start a CRC xfer?
+		beq	SetstAddr	; yes
+		cmp	#CAN		; is it a cancel? <Esc> Key
+		bne	WAIT4CRC	; No, wait for another character
+		jmp	PrtAbort	; Print abort msg and exit
+
+
+SetstAddr	ldy	#$00		; init data block offset to 0
+		ldx	#$02		; preload X to Receive buffer
+		lda	#$01		; manually load blk number	
+		sta	Rbuff		; into 1st byte
+		lda	#$FE		; load 1's comp of block #	
+		sta	Rbuff+1		; into 2nd byte
+		JMP	Ldbuff1		; jump into buffer load routine
+
+LdBuffer	lda	Lastblk		; Was the last block sent?
+		beq	LdBuff0		; no, send the next one	
+		LDA #XEOT		;send EOT
+		JSR PUT_CHR
+		CLC
+		RTS			; yes, we're done
+
+LdBuff0		ldx	#$02		; init pointers
+		ldy	#$00		;
+		inc	Blkno		; inc block counter
+		lda	Blkno		; 
+		sta	Rbuff		; save in 1st byte of buffer
+		eor	#$FF		; 
+		sta	Rbuff+1		; save 1's comp of blkno next
+
+LdBuff1		lda	(DMA),y		; save 128 bytes of data
+		sta	Rbuff,x		;
+LdBuff2		sec			; 
+		lda	PTR		;
+		sbc	DMA		; Are we at the last address?
+		bne	LdBuff4		; no, inc pointer and continue
+		lda	PTR+1		;
+		sbc	DMA+1		;
+		bne	LdBuff4		; 
+		inc	LastBlk		; Yes, Set last byte flag
+LdBuff3		inx			;
+		cpx	#$82		; Are we at the end of the 128 byte block?
+		beq	SCalcCRC	; Yes, calc CRC
+		lda	#$00		; Fill rest of 128 bytes with $00
+		sta	Rbuff,x		;
+		beq	LdBuff3		; Branch always
+
+LdBuff4		inc	DMA		; Inc address pointer
+		bne	LdBuff5		;
+		inc	DMA+1		;
+LdBuff5		inx			;
+		cpx	#$82		; last byte in block?
+		bne	LdBuff1		; no, get the next
+SCalcCRC	jsr 	CalcCRC
+		lda	crc+1		; save Hi byte of CRC to buffer
+		sta	Rbuff,y		;
+		iny			;
+		lda	crc		; save lo byte of CRC to buffer
+		sta	Rbuff,y		;
+Resend		ldx	#$00		;
+		lda	#SOH
+		jsr	PUT_CHR		; send SOH
+SendBlk		lda	Rbuff,x		; Send 132 bytes in buffer to the console
+		jsr	PUT_CHR		;
+		inx			;
+		cpx	#$84		; last byte?
+		bne	SendBlk		; no, get next
+		lda	#$FF		; yes, set 3 second delay 
+		sta	retry2		; and
+		jsr	GET_BYTE	; Wait for Ack/Nack
+		BCS	Seterror	; No chr received after 3 seconds, resend
+		cmp	#ACK		; Chr received... is it:
+		beq	LdBuffer	; ACK, send next block
+		cmp	#NAK		; 
+		beq	Seterror	; NAK, inc errors and resend
+		cmp	#CAN		;
+		beq	PrtAbort	; Esc pressed to abort
+					; fall through to error counter
+Seterror	inc	errcnt		; Inc error counter
+		lda	errcnt		; 
+		cmp	#$0A		; are there 10 errors? (Xmodem spec for failure)
+		bne	Resend		; no, resend block
+PrtAbort	jsr	Flush		; yes, too many errors, flush buffer
+		LDA	#XModem_terminated
+		SEC
+		RTS
+
 ;
 ;^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 ;
@@ -301,6 +486,29 @@ Flush				; flush receive buffer
 		BCC FLUSH
 		CLC
 		rts			; else done
+
+;=========================================================================
+;
+;
+;  CRC subroutines 
+;
+;
+CalcCRC		lda	#$00		; yes, calculate the CRC for the 128 bytes
+		sta	crc		;
+		sta	crc+1		;
+		ldy	#$02		;
+CalcCRC1	lda	Rbuff,y		;
+		eor 	crc+1 		; Quick CRC computation with lookup tables
+       		tax		 	; updates the two bytes at crc & crc+1
+       		lda 	crc		; with the byte send in the "A" register
+       		eor 	CRCHI,X
+       		sta 	crc+1
+      	 	lda 	CRCLO,X
+       		sta 	crc
+		iny			;
+		cpy	#$82		; done yet?
+		bne	CalcCRC1	; no, get next
+		rts			; y=82 on exit
 ;
 ;
 ;======================================================================
@@ -420,19 +628,7 @@ TIME_	DB 0
 X_BUF	DB 0
 CHR_BUF	DB 0
 CHR_	DB 0
-;
-;  CRC subroutines 
-;
-;
-UpdCrc		eor 	crc+1 		; Quick CRC computation with lookup tables
-       		tax		 	; updates the two bytes at crc & crc+1
-       		lda 	crc		; with the byte send in the "A" register
-       		eor 	CRCHI,X
-       		sta 	crc+1
-      	 	lda 	CRCLO,X
-       		sta 	crc
-       		rts
-;
+
 
 ;==========================================
 
@@ -553,6 +749,11 @@ PRTNI1	ADC #$30
 	JSR PRTCHR
 	RTS
 
+;-----	TABLES  --------------------------------
+
+SWTAB	DB 'R',$80,'r',$80,'S',$00,'s',$00
+SWTABX
+
 ;======	MESSAGES	======
 
 ERRM1	DB ' Error $',EOT
@@ -576,7 +777,7 @@ ERRTAB	DB $FD,$81,'Drive not ready',EOT
 	DB $81,$10,'Missing Parameter',EOT
 	DB $82,$10,'Illegal Parameter',EOT
 	DB FName_miss,$10,'Filename missing',EOT
-
+	DB NO_ARG,$10,'no switch set',EOT
 	DB FILE_TOO_LONG,$10,'File too long',EOT
 	DB X_CAN,$10,'<CAN>',EOT
 	DB X_BLK,$10,'wrong blk nr',EOT
@@ -587,6 +788,7 @@ ERRTAB	DB $FD,$81,'Drive not ready',EOT
 STARTM	DB CLS
 	DB 'XMODEM V',VERSION/16+$30,'.',VERSION*$1000/$1000+$30
 	DB '			(c) D. Lausberg	2021'
+	DB CR,LF,CR,LF,'Usage xmodem filename.ext /[r(eceive)/s(end)]
 	DB CR,LF,CR,LF,EOT
 
 ASK	DB '  File exists, overwrite? (Y/N) ',EOT

@@ -49,6 +49,7 @@ DATETIME	1.1
 DEBUG		1.5
 DRUCKER		1.0
 DUTIL		1.5
+EDIT		1.0
 EPROMMER	1.2
 ERASE		1.5
 FORMAT		2.4
@@ -63,7 +64,7 @@ SUPERTAP	1.4
 SYS 		1.5
 SYSGEN		1.0
 TYPE		1.6
-XMODEM		1.2
+XMODEM		2.0
 
 All software is supplied as assembler files to be assembled with the CPM-65 assembler. In case you wish to use a different assembler, the syntax has to be adapted accordingly.
 
