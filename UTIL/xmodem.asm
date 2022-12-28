@@ -1,4 +1,5 @@
-;XMODEM - liest ein XMODEM-File
+;XMODEM - reads and writes XMODEM-Filetransfer
+;code adapted from Daryl Rictor,www.6502.org/source/io/xmodem/xmodem.htm 
 
 ;(C) D. LAUSBERG	2021
 ;V1.0	25.01.21	receive only
