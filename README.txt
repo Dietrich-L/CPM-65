@@ -64,7 +64,7 @@ SUPERTAP	1.4
 SYS 		1.5
 SYSGEN		1.0
 TYPE		1.6
-XMODEM		2.0
+XMODEM		2.1
 
 All software is supplied as assembler files to be assembled with the CPM-65 assembler. In case you wish to use a different assembler, the syntax has to be adapted accordingly.
 

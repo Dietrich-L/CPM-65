@@ -7,8 +7,9 @@
 ;V1.2	20.03.22	I/O more stable
 ;V1.3	23.12.22	correct file length
 ;V2.0	27.12.22	send & receive
+;V2.1	02.01.23	some improvements & cleanup
 
-VERSION	= $20		;VERSION NUMBER
+VERSION	= $21		;VERSION NUMBER
 ;================================================
 
 ;KONSTANTEN
@@ -67,27 +68,26 @@ PBD	= $F682
 TPA	= $0200
 
 ;Page 00 cells 
-
-PAGES	= 0
-LENGTH	= 1
-ERRNO	= 2		;ERROR NR
-PNT	= 3
-SWITCH	= 4
-CRC	= 5		; CRC lo byte  (two byte variable)
-PTR	= 7		; data pointer (two byte variable)
-blkno	= 9		; block number 
-retry	= 10		; retry counter 
-retry2	= 11		; 2nd counter
-STR	= 12		; pointer for STR_OUT
-errcnt	= 14		; error counter for resend
-lastblk	= 15		;flag for last block to be sent
+Rbuff	= 0 		;132 byte receive buffer (page aligned)
+ZP	= $90		;start of zero page RAM cells
+PAGES	= ZP+0
+LENGTH	= ZP+1
+ERRNO	= ZP+2		;ERROR NR
+PNT	= ZP+3
+SWITCH	= ZP+4
+CRC	= ZP+5		; CRC lo byte  (two byte variable)
+PTR	= ZP+7		; data pointer (two byte variable)
+blkno	= ZP+9		; block number 
+retry	= ZP+10		; retry counter 
+retry2	= ZP+11		; 2nd counter
+STR	= ZP+12		; pointer for STR_OUT
+errcnt	= ZP+14		; error counter for resend
+lastblk	= ZP+15		;flag for last block to be sent
 
 CCPV	= $DE
 BDOS	= $F0
 FCB1	= $F6
 DMA	= $FE
-
-STATUS	= $F3		;STATUS-FLAG  ^P/^S/./. BAT/DIR/FCB/DEL
 
 
 	ORG TPA
@@ -145,13 +145,10 @@ XMODSEND			;XMODEM send file
 	LDX #OPEN
 	JSR BDOS
 	BCS STERR
-	LDA #0
-	STA LENGTH
-	JSR SETDMA
-XMS1	LDX #READ
+	JSR SETDMA		;DMA = LOMEM
+XMS1	LDX #READ		;read file to memory
 	JSR BDOS
 	BCS XMS2
-	INC LENGTH
 	INC DMA+1
 	CMP BDOS+2
 	BCC XMS1
@@ -159,13 +156,17 @@ XMS1	LDX #READ
 	RTS
 
 XMS2	CMP #EOF
-	BNE STERR
-	JSR XMSEND
+	BNE STERR		;if EOF reached
+	JSR XMSEND		;transmit file
 	BCC START4
 	BCS STERR
 
 ;=======================================
-INIT	LDY #1
+INIT	ldy	#$00
+	sty	errcnt		; error counter set to 0
+	sty	lastblk		; set flag to false
+	INY
+	sty	blkno		; set block # to 1
 	LDA (FCB1),Y
 	CMP #SP			;check for filename
 	BEQ INIT9
@@ -220,23 +221,21 @@ FOPEN	LDX #OPEN		;open file to be transferred
 	CMP #'Y
 	BEQ FOPENX
 	LDA #FILNW
-	SEC
+FOPEN2	SEC
+	RTS
+
+FOPEN1	CMP #NOTFND		;if file doesn't exist
+	BNE FOPEN2
+	LDX #CREATE		;create it
+	JSR BDOS
 	RTS
 
 FOPENX	JSR CRLF
 	CLC
 	RTS
 
-FOPEN1	CMP #NOTFND
-	BNE FOPEN2
-	LDX #CREATE
-	JSR BDOS
-	RTS
 
-FOPEN2	SEC
-	RTS
-
-SETDMA	LDA #LOMEM
+SETDMA	LDA #LOMEM		;DMA = LOMEM
 	STA DMA
 	LDA #LOMEM/256
 	STA DMA+1
@@ -251,9 +250,7 @@ INCDMA	INC DMA+1
 
 ;==========================================
 
-XModem		lda	#$01		;receive file
-		sta	blkno		; set block # to 1
-		LDA #LOMEM		;set PTR to LOMEM for file storage
+XModem		LDA #LOMEM		;set PTR to LOMEM for file storage
 		STA PTR
 		LDA #LOMEM/256
 		STA PTR+1
@@ -303,17 +300,12 @@ GetBlk2		sta	Rbuff,X		; good char, save it in the rcv buffer
 		ldx	#$00		;
 		lda	Rbuff,X		; get block # from buffer
 		cmp	blkno		; compare to expected block #	
-		beq	GoodBlk1	; matched!
-		jsr	Flush		; mismatched - flush buffer
-		lda	#X_BLK		; 
-                SEC			; unexpected block # - fatal error
-		RTS
-
+		bne	BadBlk
 GoodBlk1	eor	#$ff		; 1's comp of block #
 		inx			;
 		cmp	Rbuff,X		; compare with expected 1's comp of block #
 		beq	GoodBlk2 	; matched!
-		jsr 	Flush		; mismatched - flush buffer
+BadBlk		jsr 	Flush		; mismatched - flush buffer
 		lda	#X_BLK		; 
                 SEC			; unexpected block # - fatal error
 		RTS
@@ -331,7 +323,7 @@ BadCrc		jsr	Flush		; flush the input port
 		jsr	Put_Chr		; send NAK to resend block
 		jmp	StartBlk	; start over, get the block again			
 	
-CopyBlk		LDX 	#$02		;data starts at pos $02
+CopyBlk		LDX 	#$02		; data starts at pos $02
 		ldy	#$00		; set offset to zero
 CopyBlk3	lda	Rbuff,X		; get data byte from buffer
 		sta	(ptr),Y		; save to target
@@ -364,14 +356,10 @@ Done		lda	#ACK		; last block, send ACK and exit.
 ;^^^^^^^^^^^^^^^^^^^^^^ Start of XModem send ^^^^^^^^^^^^^^^^^^^^^^
 
 ;
-; Enter this routine with the beginning address stored in the zero page address
-; pointed to by ptr & ptrh and the ending address stored in the zero page address
-; pointed to by eofp & eofph.
+; Enter this routine with the ending address stored in DMA
+;
 
-XMSEND		lda	#$00		;
-		sta	errcnt		; error counter set to 0
-		sta	lastblk		; set flag to false
-		LDX DMA+1
+XMSEND		LDX DMA+1
 		LDY DMA			;set PTR = DMA - 1
 		BNE XMSEND1
 		DEX
@@ -381,8 +369,6 @@ XMSEND1		DEY
 		JSR SETDMA		;reset DMA = beginning adr
 		JSR INITCOM
 		JSR FLUSH
-		lda	#$01		;
-		sta	blkno		; set block # to 1
 Wait4CRC	LDA #'.			;while waiting
 		JSR PUT_CHR		;print .
 		lda	#$ff		; 3 seconds
@@ -390,21 +376,13 @@ Wait4CRC	LDA #'.			;while waiting
 		jsr	GET_BYTE
 		BCS	Wait4CRC	; wait for something to come in...
 		cmp	#'C		; is it the "C" to start a CRC xfer?
-		beq	SetstAddr	; yes
+		beq	LdBuff0		; yes
 		cmp	#CAN		; is it a cancel? <Esc> Key
 		bne	WAIT4CRC	; No, wait for another character
 		jmp	PrtAbort	; Print abort msg and exit
 
-
-SetstAddr	ldy	#$00		; init data block offset to 0
-		ldx	#$02		; preload X to Receive buffer
-		lda	#$01		; manually load blk number	
-		sta	Rbuff		; into 1st byte
-		lda	#$FE		; load 1's comp of block #	
-		sta	Rbuff+1		; into 2nd byte
-		JMP	Ldbuff1		; jump into buffer load routine
-
-LdBuffer	lda	Lastblk		; Was the last block sent?
+LdBuffer	inc	Blkno		; inc block counter
+		lda	Lastblk		; Was the last block sent?
 		beq	LdBuff0		; no, send the next one	
 		LDA #XEOT		;send EOT
 		JSR PUT_CHR
@@ -413,7 +391,6 @@ LdBuffer	lda	Lastblk		; Was the last block sent?
 
 LdBuff0		ldx	#$02		; init pointers
 		ldy	#$00		;
-		inc	Blkno		; inc block counter
 		lda	Blkno		; 
 		sta	Rbuff		; save in 1st byte of buffer
 		eor	#$FF		; 
@@ -476,12 +453,10 @@ PrtAbort	jsr	Flush		; yes, too many errors, flush buffer
 		SEC
 		RTS
 
-;
 ;^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 ;
 ; subroutines
-;
-;
+
 Flush				; flush receive buffer
 		JSR GET_BYTE
 		BCC FLUSH
@@ -492,8 +467,7 @@ Flush				; flush receive buffer
 ;
 ;
 ;  CRC subroutines 
-;
-;
+
 CalcCRC		lda	#$00		; yes, calculate the CRC for the 128 bytes
 		sta	crc		;
 		sta	crc+1		;
@@ -517,21 +491,20 @@ CalcCRC1	lda	Rbuff,y		;
 ;
 ;  Two routines are used to communicate with the I/O device.
 ;
-; "Get_Byte" routine will scan the input port for a character.  It will
-; return without waiting with the Carry flag SET if no character is
-; present or return with the Carry flag CLEAR and the character in the "A"
-; register if one was present.
+; GET_Byte routine will scan the input port for a character.  It will
+; return after timeout with the Carry flag SET ( no character is
+; present) or return with the Carry flag CLEAR and the character in the "A"
+; register.
 ;
-; "Put_Chr" routine will write one byte to the output port.  Its alright
-; if this routine waits for the port to be ready.  its assumed that the 
-; character was send upon return from this routine.
+; PUT_CHR routine will write one byte to the output port. Its assumed that the 
+; character was sent upon return from this routine.
 ;
 GET_Byte
 	SEI			;NO IRQ FROM HERE!
 	STX X_BUF
-CHRIN3	dec	retry		; no character received, so dec counter
-	BEQ	CHRIN4		;
-CHRIN	BIT PAD			;THEN GET ONE FROM THE KEYBOARD
+CHRIN3	dec	retry
+	BEQ	CHRIN4		; if no character, so dec counter
+CHRIN	BIT PAD			;else GET ONE FROM THE KEYBOARD
 	BMI CHRIN3		;WAIT FOR START BIT
 	LDX #8			;SET FOR 8 BITS
 	JSR DELHBT		;DELAY 1/2 BIT
@@ -802,8 +775,7 @@ CRLFM	DB CR,LF,EOT
 
 
 ; non-zero page variables and buffers (page aligned)
-;
-;
+
 MEM
 	DS MEM/256+1*256-MEM		;page alignment
 
@@ -850,8 +822,6 @@ crchi
  DB $FD,$ED,$DD,$CD,$BD,$AD,$9D,$8D,$7C,$6C,$5C,$4C,$3C,$2C,$1C,$0C
  DB $EF,$FF,$CF,$DF,$AF,$BF,$8F,$9F,$6E,$7E,$4E,$5E,$2E,$3E,$0E,$1E
 ;
-
-Rbuff	DS 132,$00  	; temp 132 byte receive buffer (page aligned)
 
 LOMEM
 
