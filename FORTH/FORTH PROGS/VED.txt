@@ -136,7 +136,7 @@ SCR # 10
   6   ."  CTL-R  Page up             CTL-N  Insert new page" cr
   7   ."  CTL-A  Page down           CTL-B  Edit SCR #" cr
   8   ."  CTL-F  Tab                 CTL-Z  Clear page" cr
-  9   ."  CTL-V  Set tag to SCR      CTL-O  Copy line to PAD" cr
+  9   ."  CTL-U  Set tag to SCR      CTL-O  Copy line to PAD" cr
  10   ."  CTL-T  Goto tagged SCR     CTL-P  Put PAD to line" cr
  11   cr
  12   ."                             CTL-Q  Quit editor" cr
