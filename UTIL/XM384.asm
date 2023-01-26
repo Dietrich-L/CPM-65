@@ -136,6 +136,7 @@ START4	LDA #SUCCESS
 	JSR STR_OUT
 BOOT	LDA #$20	;deblock chr input
 	STA SCRATCH+$64
+	JSR FLUSH	;Teraterm optimization
 	LDX #0
 	JMP BDOS	
 
