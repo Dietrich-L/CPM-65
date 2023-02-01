@@ -40,7 +40,7 @@ BASIC		1.5
 BDOS		2.2
 BIOS		3.0
 BOOT		1.7
-BOOTPROM	3.0
+BOOTPROM	3.1
 BROWSE		1.0
 CCP		1.5
 COPY		1.4
@@ -64,7 +64,7 @@ SUPERTAP	1.4
 SYS 		1.5
 SYSGEN		1.0
 TYPE		1.6
-XMODEM		2.1
+XMODEM		2.2
 
 All software is supplied as assembler files to be assembled with the CPM-65 assembler. In case you wish to use a different assembler, the syntax has to be adapted accordingly.
 
