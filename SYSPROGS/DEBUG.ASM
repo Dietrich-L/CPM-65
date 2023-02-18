@@ -5,7 +5,8 @@
 ;V1.4	19.12.91	new commands, improved disassembler
 ;V1.5	10.03.95	new memory map
 ;V1.6	09.04.22	SEARCH, NFILE, error corrections
-VERSION	= $16
+;V1.7	18.02.23	error correction dump would not stop
+VERSION	= $17
 
 ;SYSTEM CONSTANTS
 
@@ -1085,6 +1086,7 @@ CIPNTx	RTS
 CHKEND	LDY PNT+1
 	CPY ENDAD+1
 	BCC CHKENX
+	BNE CHKENX
 	LDY PNT
 	CPY ENDAD
 CHKENX	RTS
