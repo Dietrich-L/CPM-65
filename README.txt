@@ -35,7 +35,7 @@ Software List
 ---------------------
 Name		Version
 ALLOC		2.9
-ASM		2.5
+ASM		2.6
 BASIC		1.5
 BDOS		2.2
 BIOS		3.0
