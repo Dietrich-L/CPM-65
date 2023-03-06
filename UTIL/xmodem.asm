@@ -45,7 +45,6 @@ FILNW	= $88		;no File owerwrite
 
 CONIN	= $01
 CONOUT	= $02
-CONIO	= $06
 STROUT	= $09
 OPEN	= $0F
 CLOSE	= $10
@@ -176,7 +175,7 @@ XModem	LDA #LOMEM	;set PTR to LOMEM for file storage
 	JSR INITCOM
 	LDA #1		; block nr = 1
 	STA BLKNO
-	LDA #10		; max. 10 errors
+	LDA #20		; max. 20 errors
 	STA ERRCNT
 	SEI		; no IRQ from here	
 StartCrc
@@ -238,7 +237,7 @@ BadCrc	JSR FLUSH	; flush the input port
 	DEC ERRCNT
 	BEQ BADBLK	;too manx errors
 	LDA #NAK
-	JMP StartBlk	; Start over, get the block again		
+	BNE StartBlk	; Start over, get the block again		
 	
 CopyBlk	LDX #$02	; data STARTS at pos $02
 	LDY #$00	; set offset to zero
