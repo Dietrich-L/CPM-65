@@ -14,8 +14,9 @@ This repository contains CPM-65, <br>a CP/M-80 analogue operating system for 650
 
 ![Junior Computer](https://github.com/Dietrich-L/CPM-65/assets/83355183/81120437-620d-40d7-9cd0-a68b2e8ef978)<br>Elektor Junior Computer - system setup
 
-![CPM-65 Screen System Disc](https://github.com/Dietrich-L/CPM-65/assets/83355183/3056852b-30cd-47ca-b2da-cb22a5808fff)<br>
-Screenshot system disc<br><br>&nbsp;System Requirements
+![CPM-65 Screen System Disc](https://github.com/Dietrich-L/CPM-65/assets/83355183/3056852b-30cd-47ca-b2da-cb22a5808fff)<br>Screenshot system disc
+
+&nbsp;System Requirements
 --------------------------
 6502 processor
 12 kByte RAM (not tested)
