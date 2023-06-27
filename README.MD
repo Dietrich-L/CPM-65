@@ -1,7 +1,7 @@
 <html>
   <head>
-    <title>readme.md</title>
     <meta http-equiv="content-type" content="text/html; charset=windows-1252">
+    <title>readme.md</title>
     <link rel="alternate stylesheet" type="text/css" href="resource://gre-resources/plaintext.css">
   </head>
   <body>
@@ -12,9 +12,10 @@ https://github.com/dietrich-l
 
 This repository contains CPM-65, <br>a CP/M-80 analogue operating system for 6502 based microcomputers
 
-![Junior Computer](https://github.com/Dietrich-L/CPM-65/assets/83355183/81120437-620d-40d7-9cd0-a68b2e8ef978)<br>
+![Junior Computer](https://github.com/Dietrich-L/CPM-65/assets/83355183/81120437-620d-40d7-9cd0-a68b2e8ef978)<br>Elektor Junior Computer - system setup
 
-System Requirements
+![CPM-65 Screen System Disc](https://github.com/Dietrich-L/CPM-65/assets/83355183/3056852b-30cd-47ca-b2da-cb22a5808fff)<br>
+Screenshot system disc<br><br>&nbsp;System Requirements
 --------------------------
 6502 processor
 12 kByte RAM (not tested)
