@@ -1,8 +1,9 @@
 ;EDIT.COM -- CP/M-65 DEBUGGER
 ;BY D. LAUSBERG	 (C)2022
 ;V1.0	06.12.22
+;V1.1	28.06.23	correct error message when deleting chr at pos 0
 
-VERSION	= $10
+VERSION	= $11
 
 ;SYSTEM CONSTANTS
 
@@ -218,6 +219,7 @@ DELCHR2	LDA (LIN1),Y
 	ORA #%01000000	;del last printable chr
 	STA CFLAG
 	JSR P2EOL
+	CLC
 	RTS
 
 
@@ -1229,6 +1231,7 @@ P2EOL1	LDA (LINE),Y
 	BPL P2EOL1
 	LDA #CR		;clear to EOL
 	JSR CTLOUT
+	INY		;CURPOS = 0
 	STY CURPOS
 	SEC		;line empty
 	RTS
