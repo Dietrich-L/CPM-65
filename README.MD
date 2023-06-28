@@ -182,7 +182,7 @@ Software List
         <tr>
           <td style="height: 28.8167px;"><span style="font-family: Courier New,Courier,monospace;">EDIT<br>
             </span> </td>
-          <td><span style="font-family: Courier New,Courier,monospace;">1.0<br>
+          <td><span style="font-family: Courier New,Courier,monospace;">1.1<br>
             </span> </td>
           <td><span style="font-family: Courier New,Courier,monospace;">simple
               screen editor for text files and FORTH screens<br>
