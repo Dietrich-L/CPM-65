@@ -1,4 +1,4 @@
-;CP/M-65 Version
+;CP/M-65 Version   Apple II Version
 ;Version 2.08-S
 ;released:	10 October 1982
 ;last revision:
@@ -112,8 +112,6 @@ SETDRV	LDX	#$0E		;then
 	sta	bitcnt+1
 	ldy	#7		;get size code
 	lda	(dcbpnt),y
-	SEC			;-2
-	SBC #2
 	sta	blkscd		;and save
 	LDY #YBAT
 	LDA (dcbpnt),Y
@@ -214,6 +212,7 @@ DONE1	jsr	sndfre
 	LDA	DFLDRV		;select
 	LDX	#14		;default
 	JMP	PEM		;and return
+
 ;send 16 bit value in free to screen
 sndfre	ldx	#0		;clear 10000's
 	sec
@@ -289,6 +288,8 @@ mkedig	txa			;move to a
 snddig	ora	#'0'
 	jsr	chrout		;send
 extdig	rts			;quit
+
+
 ;output a cr and lf
 CRLF	LDA	#CR		;send
 	JSR	CHROUT		;a cr
@@ -341,13 +342,15 @@ DUMMY	DB '$120957$$$$'
 ;bit mask table
 BITMSK	DB	128,64,32,16,8,4,2,1
 ;block size messages
+BLKMS025 DB	'0.25',EOT
+BLKMS05	DB	'0.5',EOT
 blkms0	DB	'1',EOT
 blkms1	DB	'2',EOT
 blkms2	DB	'4',EOT
 blkms3	DB	'8',EOT
 blkms4	DB	'16',EOT
 ;block size message pointers
-blktbl	DW	blkms0,blkms1,blkms2,blkms3,blkms4
+blktbl	DW	BLKMS025,BLKMS05,blkms0,blkms1,blkms2,blkms3,blkms4
 ;opening message
 opnmsg	DB	CR,LF,'CPM-65 DISK ALLOCATION MAP V2.09',CR,LF,CR,LF
 	DB '   01234567890123456789012345678901'
