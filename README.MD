@@ -4,7 +4,7 @@
     <link rel="alternate stylesheet" type="text/css" href="resource://gre-resources/plaintext.css">
   </head>
   <body>
-    <pre>CPM-65 APPLE II Port
+    <pre>CPM-65
 ===========
 Dietrich Lausberg &lt;lausbergd@gmail.com&gt;
 https://github.com/dietrich-l
@@ -36,9 +36,8 @@ CPM-65 consists of 3 layers:
 Filenames are CP/M-style d:filename.ext with d &lt;Drive A-H&gt;
 Programs must have .COM as extension and are loaded to $0200 and started there.
 
-The directory structure is nearly CP/M-compatible. Disk images can be read with appropriate  tools <br>like CPMTOOLS or CpmtoolsGUI. A disdefs file is in the IMAGES section. However due to an inconsistency <br>in the file system implementation of these tools max. 8 kB files can be written this way. <br>For the transfer of larger files, see separate documentation.
-
-
+The directory structure is nearly CP/M-compatible. Disk images can be read with appropriate  tools <br>like CPMTOOLS, <a
+href="https://github.com/ProgrammingHobby/CPM_Image-File_Explorer">CIFE (CPM Image File Explorer)</a> or CpmtoolsGUI. A disdefs file is in the IMAGES section. <br>Please use a recent version because parameter <b>extentsize 8192</b> is needed.<br>
 The Disc format is typically 40 tracks/ 16 sectors/ 256 byte/sector. It is defined in the BIOS. <br>The BDOS operates on sector numbers. <br>Maximum sector number is $800 blocks with $20 sectors = 65536 sectors á 256 bytes = 16 MBytes
 
 Software List
@@ -324,8 +323,7 @@ Software List
         </tr>
       </tbody>
     </table>
-    <pre>*available
-
+    <pre>
 All software is supplied as assembler files to be assembled with the CPM-65 assembler. <br>In case you wish to use a different assembler, the syntax has to be adapted accordingly.
 
 Documentation
