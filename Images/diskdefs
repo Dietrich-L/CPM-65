@@ -1,0 +1,12 @@
+# ELEKTOR Junior Computer CPM-65
+diskdef JC
+  seclen 256
+  tracks 80
+  sectrk 16
+  blocksize 1024
+  maxdir 128
+  skew 0
+  boottrk 2
+  os 2.2
+  extentsize 8192
+end
