@@ -9,7 +9,8 @@
 ;V1.5	04.02.21	correct filesize
 ;V1.6	29.04.21	no disc change on drives E: and above
 ;V2.0	24.02.22	sorted DIR
-VERSION	= $20
+;V2.1	30.07.23	disc change only if implicitly required
+VERSION	= $21
 
 ;---- System Constants
 
@@ -70,17 +71,20 @@ DIR	LDA #START_MESS		;GREETING MESSAGE
 	STA S_FILES+1
 	STA COL
 	JSR RESBUF
-	CLC
-	LDY #0
-	LDA (FCB1),Y
-	BNE DIR4
 	LDX #GETDRV
 	JSR BDOS
 	SEC
-DIR4	ADC #$40
-	STA DRIVE
-	JSR XCH_DSK
-	JSR FCB_CHECK
+	ADC #$40
+	STA DRIVE		;save default drive
+	CLC
+	LDY #0
+	LDA (FCB1),Y
+	BEQ DIR4
+	ADC #$40
+	CMP DRIVE
+	BNE DIR4		;if default drive is given in command line
+	JSR XCH_DSK		;then exchange disks
+DIR4	JSR FCB_CHECK
 	LDX #FIRST
 	JSR BDOS		;CHECK FOR FILE
 	BCC DIR1

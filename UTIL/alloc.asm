@@ -25,6 +25,8 @@
 ;		moved notasp
 ;	30 November 2022 (2.09)
 ;		nr of free blocks corrected
+;	28. July 2023 (2.10)
+;		16 bit pointers correct allocated
 ;Syntax is ALLOC x where x is the drive (A to H)
 ;If x is blank then the default drive is used.
 ;users may want to change the value of width
@@ -32,15 +34,15 @@
 ;characters wide.
 ;external references
 
-PEM	=	$F0		;pem entry
-FCB1	= $F6			;default fcb vector
-DPHV	= $F8			;DPH-VECTOR
-TPA	=	$200		;tpa start
+PEM	= $F0		;pem entry
+FCB1	= $F6		;default fcb vector
+DPHV	= $F8		;DPH-VECTOR
+TPA	= $200		;tpa start
 ;fixed parameters
 EOT	= $00
-CR	=	$D		;return
-LF	=	$A		;linefeed
-YBAT	= 4			;index BAT vector in DPH
+CR	= $D		;return
+LF	= $A		;linefeed
+YBAT	= 4		;index BAT vector in DPH
 ;width is a somewhat obscure way of controlling display width
 ;it can be set to 1, 3, 7, etc. - and when so set the number of
 ;8 block wide bit maps becomes 2, 4, 8, etc.
@@ -48,17 +50,17 @@ YBAT	= 4			;index BAT vector in DPH
 width	=	3		;(width+1)*8-->chars per line
 ;maxline defines the number of map line to print
 ;before pausing.
-maxlin	=	40
+maxlin	= 40
 ;page zero variables
-pzstrt	=	$2		;start of free page zero ram
-dcbpnt	= $4			;dcb pointer
-bitcnt	= $6			;count of total blocks
-VECPNT	= $8			;vector pointer
-DFLDRV	= $9			;default drive
-TMPDRV	= $0A			;temporary drive
-FREE	= $B			;free blocks
-BITNUM	= $D			;bit (0 to 7)
-bytnum	= $F			;byte (0 to 255)
+pzstrt	= $02		;start of free page zero ram
+dcbpnt	= $04			;dcb pointer
+bitcnt	= $06			;count of total blocks
+VECPNT	= $08			;vector pointer
+DFLDRV	= $0A			;default drive
+TMPDRV	= $0B			;temporary drive
+FREE	= $0C			;free blocks
+BITNUM	= $0E			;bit (0 to 7)
+bytnum	= $0F			;byte (0 to 255)
 LEADZ	= $10			;leading zero flag
 blkscd	= $11			;block size code
 total	= $12			;total number of block
@@ -352,7 +354,7 @@ blkms4	DB	'16',EOT
 ;block size message pointers
 blktbl	DW	BLKMS025,BLKMS05,blkms0,blkms1,blkms2,blkms3,blkms4
 ;opening message
-opnmsg	DB	CR,LF,'CPM-65 DISK ALLOCATION MAP V2.09',CR,LF,CR,LF
+opnmsg	DB	CR,LF,'CPM-65 DISK ALLOCATION MAP V2.10',CR,LF,CR,LF
 	DB '   01234567890123456789012345678901'
 	DB	CR,LF,EOT
 nxtmsg	DB	cr,lf,'PRESS SPACE BAR TO SEE NEXT PAGE',EOT
