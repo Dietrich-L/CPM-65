@@ -117,7 +117,7 @@ Software List
         <tr>
           <td><span style="font-family: Courier New,Courier,monospace;">BROWSE<br>
             </span> </td>
-          <td><span style="font-family: Courier New,Courier,monospace;">1.0<br>
+          <td><span style="font-family: Courier New,Courier,monospace;">1.2<br>
             </span> </td>
           <td><span style="font-family: Courier New,Courier,monospace;">text
               file browser<br>
@@ -153,7 +153,7 @@ Software List
         <tr>
           <td><span style="font-family: Courier New,Courier,monospace;">DEBUG<br>
             </span> </td>
-          <td><span style="font-family: Courier New,Courier,monospace;">1.7<br>
+          <td><span style="font-family: Courier New,Courier,monospace;">1.8<br>
             </span> </td>
           <td><span style="font-family: Courier New,Courier,monospace;">Debugger
               with breakpoint capability<br>
@@ -323,8 +323,7 @@ Software List
         </tr>
       </tbody>
     </table>
-    <pre>
-All software is supplied as assembler files to be assembled with the CPM-65 assembler. <br>In case you wish to use a different assembler, the syntax has to be adapted accordingly.
+    <pre>All software is supplied as assembler files to be assembled with the CPM-65 assembler. <br>In case you wish to use a different assembler, the syntax has to be adapted accordingly.
 
 Documentation
 --------------------
