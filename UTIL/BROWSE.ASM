@@ -1,9 +1,9 @@
 ;BROWSE.ASM - Browse a text file
 ;V1.0	28.03.22	by D. Lausberg
 ;V1.1	05.04.22	1 page back cmd added, error corrections
+;V1.2	07.08.23	error corrections
 
-
-VERSION	= $11		;VERSION NUMBER
+VERSION	= $12		;VERSION NUMBER
 
 ;=====================================
 
@@ -19,7 +19,7 @@ CMDKey	= 11		;command key
 ERRNO	= 12
 FilEND	= 13
 
-CCPV	= $DE
+CCPV	= $E0
 BDOS	= $F0
 FCB1	= $F6
 POINT	= $FA			;POINTER FOR HEX MONITOR
@@ -484,7 +484,7 @@ ERRTAB	DB $F9,$01,'Invalid Drive',EOT
 	DB $D9,$02,'Invalid FCB',EOT
 	DB $D8,$82,'Disk full',EOT
 	DB $D6,$82,'File is R/O',EOT
-	DB $87,$10,'invalid filename,EOT
+	DB $87,$10,'invalid filename',EOT
 	DB $86,$10,'no filename',EOT
 	DB $84,$10,'End of Line',EOT
 	DB $83,$10,'Too Much Parameters',EOT
