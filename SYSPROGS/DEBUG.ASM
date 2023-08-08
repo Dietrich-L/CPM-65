@@ -6,7 +6,8 @@
 ;V1.5	10.03.95	new memory map
 ;V1.6	09.04.22	SEARCH, NFILE, error corrections
 ;V1.7	18.02.23	error correction dump would not stop
-VERSION	= $17
+;V1.8	08.08.23	QUIT restores original IRQ vetor
+VERSION	= $18
 
 ;SYSTEM CONSTANTS
 
@@ -14,7 +15,7 @@ DMA	= $FE
 FCB1	= $F6
 BDOS	= $F0
 INBUF	= $EC
-CCPV	= $DE
+CCPV	= $E0
 PNT	= $D8
 SA	= 0
 ZA	= 2
@@ -591,7 +592,11 @@ KILL3	JSR KILLX
 	RTS
 
 
-QUIT	LDY #CBOOT
+QUIT	LDA IRQBUF
+	STA IRQ	;restore old IRQ vector
+	LDA IRQBUF+1
+	STA IRQ+1
+	LDY #CBOOT
 	LDX #BIOS
 	JMP BDOS
 
@@ -717,7 +722,11 @@ BREAK8	LDA #0
 
 ;======  SUBROUTINES  ============== 
 
-INIT	LDA #BREAK	;SET BREAK VEKTOR
+INIT	LDA IRQ
+	STA IRQBUF	;save IRQ vector
+	LDA IRQ+1
+	STA IRQBUF+1
+	LDA #BREAK	;SET BREAK VEKTOR
 	STA IRQ
 	LDA #BREAK/256
 	STA IRQ+1
@@ -1972,6 +1981,8 @@ PNTBUF	DW 0
 BEGAD	DW 0
 ENDAD	DW 0
 CURAD	DW TPA
+
+IRQBUF	DW 0
 
 SRCBUF	DS 16
 
