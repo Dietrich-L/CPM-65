@@ -40,6 +40,7 @@ ZFlag	= 22		;flag for leading zero's
 ERRNO	= 23		;BUFFER FOR ERROR NUMBER
 SPBDIV	= 24		;LOG(2) SPB
 C_BUF   = 25		;Buffer for C
+DEF_DRV	= 26		;buffer for DEFDRV
 
 ;---- BDOS COMMANDS
 
@@ -104,6 +105,9 @@ DIR2	LDX #NEXT
 DIRX	LDA #END_MESS
 	LDY #END_MESS/256
 	JSR PRTSTR
+	LDA DEF_DRV
+	LDX #SELDRV		;LOGIN default DRIVE
+	JSR BDOS
 	RTS
 
 DIR_CONT			;all entries in buffer - continue
@@ -158,6 +162,7 @@ INITX	RTS
 
 XCH_DSK	LDX #DEFDRV		;set default drive
 	JSR BDOS
+	STA DEF_DRV
 	ADC #$41
 	STA DRIVE
 	LDY #0			;exchange disks if needed
