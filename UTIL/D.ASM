@@ -10,14 +10,16 @@
 ;V1.6	29.04.21	no disc change on drives E: and above
 ;V2.0	24.02.22	sorted DIR
 ;V2.1	30.07.23	disc change only if implicitly required
-VERSION	= $21
+;V2.2	27.10.23	error in disk free calc 
+VERSION	= $22
 
 ;---- System Constants
 
 DIRBUF	= $FC
+DPH	= $F8
 FCB1	= $F6
 BDOS	= $F0
-CCPV	= $DE
+CCPV	= $E0
 
 ;---- PAGE 00 CELLS
 
@@ -36,12 +38,16 @@ CONV	= 19		;2 bytes buffer for BCD conversion
 COL	= 21		;col nr. 0/1
 ZFlag	= 22		;flag for leading zero's
 ERRNO	= 23		;BUFFER FOR ERROR NUMBER
+SPBDIV	= 24		;LOG(2) SPB
+C_BUF   = 25		;Buffer for C
 
 ;---- BDOS COMMANDS
 
 CONIN	= $01		;CONSOLE INPUT
 CONOUT	= $02		;CONSOLE OUTPUT
 STROUT	= $09		;PRINT STRING
+DEFDRV	= $0D		;select default drive
+SELDRV	= $0E		;select drive
 FIRST	= $11		;GET 1. DIR ENTRY
 NEXT	= $12		;GET NEXT DIR ENTRY
 GETDRV	= $19		;GET DEFAULT DRIVE
@@ -59,36 +65,19 @@ SP	= $20
 
 NOTFND	= $DD
 
-
 ;----------------------------------------------
+
+	ORG $200
 
 DIR	LDA #START_MESS		;GREETING MESSAGE
 	LDY #START_MESS/256
 	JSR PRTSTR
-	LDA #0
-	STA F_CNT		;RESET FILE COUNTER
-	STA S_FILES		;Reset filesize counter
-	STA S_FILES+1
-	STA COL
-	JSR RESBUF
-	LDX #GETDRV
-	JSR BDOS
-	SEC
-	ADC #$40
-	STA DRIVE		;save default drive
-	CLC
-	LDY #0
-	LDA (FCB1),Y
-	BEQ DIR4
-	ADC #$40
-	CMP DRIVE
-	BNE DIR4		;if default drive is given in command line
-	JSR XCH_DSK		;then exchange disks
-DIR4	JSR FCB_CHECK
+	JSR INIT		;initialize pointers & vars
+	BCS DIR4
 	LDX #FIRST
 	JSR BDOS		;CHECK FOR FILE
 	BCC DIR1
-	JSR ERROR
+DIR4	JSR ERROR
 	BCC DIR
 	BCS DIRX
 
@@ -147,13 +136,54 @@ DIR_PS	JSR PR_REC		;Print filesize of last file
 	LDA #SUM_FILESIZE	;Print total space used
 	LDY #SUM_FILESIZE/256
 	JSR PRTSTR
-	LDA S_FILES
-	LDY S_FILES+1
+	JSR CALC_KB
 	JSR PRTDEC
 	LDA #PRT_KB
 	LDY #PRT_KB/256
 	JSR PRTSTR
 	JMP DIRX
+
+
+INIT	LDA #0			;init pointers & vars
+	STA F_CNT		;RESET FILE COUNTER
+	STA S_FILES		;Reset filesize counter
+	STA S_FILES+1
+	STA COL
+	JSR RESBUF
+	JSR XCH_DSK		;exchange disks if needed
+	BCS INITX
+INIT4	JSR FCB_CHECK		;check for ?,*
+INITX	RTS
+
+
+XCH_DSK	LDX #DEFDRV		;set default drive
+	JSR BDOS
+	ADC #$41
+	STA DRIVE
+	LDY #0			;exchange disks if needed
+	LDA (FCB1),Y
+	BEQ XCHD1		;if a drive is given in command line
+	PHA
+	ADC #$40
+	STA DRIVE
+	CMP #'E			;Check for Drive >= E:
+	BCS XCHDSKX
+	LDA #XCHGM
+	LDY #XCHGM/256		;INSERT DISK
+	JSR PRTSTR
+	LDX #CONIN		;WAIT FOR KEY
+	JSR BDOS
+	JSR CRLF
+XCHDSKX	PLA			;login drive
+	SEC
+	SBC #1
+	LDX #SELDRV		;LOGIN Target DRIVE
+	JSR BDOS
+	BCS XCHGDX
+XCHD1	LDY #6+1		;GET SPBDIV
+	LDA (DPH),Y
+	STA SPBDIV
+XCHGDX	RTS
 
 
 DIRSORT	JSR SET_BIP		;set Buffer index pointer to last entry
@@ -301,19 +331,18 @@ PR_FN	LDY #FCB_FLG
 	LDX #0			;set recbuf = rec
 	STX RECBUF+1
 	STA RECBUF
-ADD_SF	TAY			;add rec to S_Files in kb
-	LSR A			;Records /8 = kByte
-	LSR A
-	LSR A
-	PHA
-	TYA			;+ modulo 8
+ADD_SF	LDX #0
+	STX C_BUF		;reset C_BUF
+	LDX SPBDIV
+ADDSF3	LSR A			;add rec to S_Files in kb
+	ROL C_BUF		;Records / SPBDIV+1 = Blocks
+	DEX
+	BPL ADDSF3
 	CLC
-	AND #$07
+	LDX C_BUF
 	BEQ ADDSF1
 	SEC
-ADDSF1	PLA
-	ADC #0
-	CLC
+ADDSF1	ADC #0
 	ADC S_FILES
 	STA S_FILES
 	BCC ADDSF2
@@ -331,6 +360,24 @@ ADD_REC	LDY #FCB_REC
 	INC RECBUF+1
 ADDREC1	PLA
 	JMP ADD_SF
+
+
+CALC_KB	LDX SPBDIV		;calc blk -> kBytes
+	DEX
+	BEQ CALCKB1
+CALCKB3	DEX
+	BEQ CALCKB2
+	ASL S_FILES		;*2
+	ROL S_FILES+1
+	BCC CALCKB3
+
+CALCKB1	LSR S_FILES+1		;0.5 kB blocks
+	ROR S_FILES
+	BCC CALCKB2
+	INC S_FILES		;round .5 kB
+CALCKB2 LDA S_FILES
+	LDY S_FILES+1
+	RTS
 
 
 PRT	STA CNT
@@ -429,20 +476,7 @@ RESBUF	LDA #BUF
 	LDA #BUFDIR/256
 	STA BUFINDP+1
 	RTS
-
-
-XCH_DSK	LDA DRIVE		;Check for Drive >= E:
-	CMP #'E
-	BCS XCHDSKX
-	LDA #XCHGM
-	LDY #XCHGM/256		;INSERT DISK
-	JSR PRTSTR
-	LDX #CONIN		;WAIT FOR KEY
-	JSR BDOS
-	JSR CRLF
-XCHDSKX	CLC
-	RTS
-
+	
 
 FCB_CHECK
 	LDY #1
@@ -454,7 +488,8 @@ FCB_CHECK
 FCB_2	STA (FCB1),Y
 	DEY
 	BNE FCB_2
-FCB_1	RTS
+FCB_1	CLC
+	RTS
 
 
 ERROR	STA ERRNO	;ERROR ROUTINE
