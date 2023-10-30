@@ -64,7 +64,7 @@ Software List
         <tr>
           <td><span style="font-family: Courier New,Courier,monospace;">ASM<br>
             </span> </td>
-          <td><span style="font-family: Courier New,Courier,monospace;">2.7<br>
+          <td><span style="font-family: Courier New,Courier,monospace;">2.8<br>
             </span> </td>
           <td><span style="font-family: Courier New,Courier,monospace;">native
               6502 Assembler<br>
@@ -91,24 +91,24 @@ Software List
         <tr>
           <td><span style="font-family: Courier New,Courier,monospace;">BIOS<br>
             </span> </td>
-          <td><span style="font-family: Courier New,Courier,monospace;">0.7<br>
+          <td><span style="font-family: Courier New,Courier,monospace;">3.2<br>
             </span> </td>
-          <td><span style="font-family: Courier New,Courier,monospace;">APPLE II
-              CPM-65 BIOS</span></td>
+          <td><span style="font-family: Courier New,Courier,monospace;">CPM-65
+              BIOS</span></td>
         </tr>
         <tr>
           <td><span style="font-family: Courier New,Courier,monospace;">BOOT<br>
             </span> </td>
           <td><span style="font-family: Courier New,Courier,monospace;">1.7<br>
             </span> </td>
-          <td><span style="font-family: Courier New,Courier,monospace;">APPLE II
-              CPM-65 BOOT program in track 0, sector 0<br>
+          <td><span style="font-family: Courier New,Courier,monospace;">CPM-65
+              BOOT program in track 0, sector 0<br>
             </span> </td>
         </tr>
         <tr>
           <td><span style="font-family: Courier New,Courier,monospace;">BOOTPROM<br>
             </span></td>
-          <td><span style="font-family: Courier New,Courier,monospace;">2.3<br>
+          <td><span style="font-family: Courier New,Courier,monospace;">3.2<br>
             </span></td>
           <td><span style="font-family: Courier New,Courier,monospace;">Junior
               Computer BOOT EPROM<br>
@@ -144,7 +144,7 @@ Software List
         <tr>
           <td><span style="font-family: Courier New,Courier,monospace;">D<br>
             </span> </td>
-          <td><span style="font-family: Courier New,Courier,monospace;">2.0<br>
+          <td><span style="font-family: Courier New,Courier,monospace;">2.2<br>
             </span> </td>
           <td><span style="font-family: Courier New,Courier,monospace;">show
               directory alphabetically sorted<br>
