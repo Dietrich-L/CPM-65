@@ -13,21 +13,23 @@
 ;V2.4	11.02.21	DS error correction
 ;V2.5	03.06.21	/L Switch
 ;V2.6	11.11.22	Some optimizations and error corrections
-VERSION	= $26
+;V2.7	21.06.23	more error corrections
+;V2.8	29.10.23	error in RSTNOD which could lead to spurious error messages
+VERSION	= $28
 
 ;===	SYSTEM CONSTANTS
 DMA	= $FE
 FCB1	= $F6
 BDOS	= $F0
 INBUF	= $EC
-CCPV	= $DE
+CCPV	= $E0
 
 ;===	PAGE 00 CELLS
 CODE	= $00	;pointer to the assembled code
 PC	= $02	;actual program counter
 LINCNT	= $04	;line number
 LINE	= $06	;pointer to current source code line
-LINPNT	= $08	;pointer to8 chr in LINE
+LINPNT	= $08	;pointer to chr in LINE
 BUFPNT	= $09	;pointer to chr in DMA
 SNOD	= $0A	;buffer for NOD
 PNOD	= $0C	
@@ -254,7 +256,7 @@ RESPNT1 LDA #0
 	STA BLK_CNT
 	LDA #$FF
 	STA BUFPNT
-	LDA #TPA/256		;PC=TPA
+	LDA #TPA/256	;PC=TPA
 	STA PC+1
 	LDA #CODBEG
 	STA CODE
@@ -509,7 +511,7 @@ REGA4	CMP #$10
 	JMP NORMA4
 
 REGA3	LDA #$10
-	BNE REGA6	
+	BNE REGA6
 
 
 RUMC	CMP #$01	;IMM
@@ -1201,10 +1203,10 @@ SAVNOD	LDA NOD
 	RTS
 
 
-RSTNOD	LDA SNOD
-	STA NOD
-	LDA SNOD+1
-	STA NOD+1
+RSTNOD	LDX SNOD	;don't use A!
+	STX NOD
+	LDX SNOD+1
+	STX NOD+1
 	RTS
 
 
@@ -2907,7 +2909,7 @@ EXTTAB	DB 'ASM','COM','LBL'
 
 ;======	MESSAGES ======
 
-ERR1M	DB CR,LF,'Line $',EOT
+ERR1M	DB CR,LF,'Line ',EOT
 ERR2M	DB '	Pos $',EOT
 ERRM1	DB ' Error $',EOT
 RTYMES	DB CR,LF,'Retry	(Y/N) ? ',EOT
