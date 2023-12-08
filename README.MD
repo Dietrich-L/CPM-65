@@ -26,7 +26,7 @@ Serial-I/O
 My system is a heavily modified and expanded Elektor Junior Computer with 57 kB RAM. <br>For system components and memory map see separate docs
 
 &nbsp;System Structure
---------------------
+---------------------
 CPM-65 consists of 3 layers:
 - BIOS Basic I/O system - currently 3 kB, could be reduced to 2kB <br>  by removing SCSI and I2C drivers. Drives can be A-H non consecutive. <br>  I/O console is serial TTY 1200 - 9600 Baud
 - BDOS Basic disc operating system - this is the CPM-65 kernal. Size 2 kB
