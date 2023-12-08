@@ -37,7 +37,8 @@ Filenames are CP/M-style d:filename.ext with d &lt;Drive A-H&gt;
 Programs must have .COM as extension and are loaded to $0200 and started there.
 
 The directory structure is nearly CP/M-compatible. Disk images can be read with appropriate  tools <br>like CPMTOOLS, <a
-href="https://github.com/ProgrammingHobby/CPM_Image-File_Explorer">CIFE (CPM Image File Explorer)</a> or CpmtoolsGUI. A disdefs file is in the IMAGES section. <br>Please use a recent version because parameter <b>extentsize 8192</b> is needed.<br>
+href="https://github.com/ProgrammingHobby/CPM_Image-File_Explorer">CIFE (CPM Image File Explorer)</a> or CpmtoolsGUI. 
+A disdefs file is in the IMAGES section. <br>Please use a recent version because parameter <b>extentsize 8192</b> is needed.<br>
 The Disc format is typically 40 tracks/ 16 sectors/ 256 byte/sector. It is defined in the BIOS. <br>The BDOS operates on sector numbers. <br>Maximum sector number is $800 blocks with $20 sectors = 65536 sectors á 256 bytes = 16 MBytes
 
 Software List
