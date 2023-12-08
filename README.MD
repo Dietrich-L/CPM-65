@@ -32,7 +32,7 @@ CPM-65 consists of 3 layers:
 - BDOS Basic disc operating system - this is the CPM-65 kernal. Size 2 kB
 - CCP Console command program - a simple console which only allows <br>  to invoke CPM-65 programs. No resident commands. Size 1 kB
 <br><br>&nbsp;File &amp; Disc Format
-----------------------
+---------------------
 Filenames are CP/M-style d:filename.ext with d &lt;Drive A-H&gt;
 Programs must have .COM as extension and are loaded to $0200 and started there.
 
