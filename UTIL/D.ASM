@@ -11,7 +11,8 @@
 ;V2.0	24.02.22	sorted DIR
 ;V2.1	30.07.23	disc change only if implicitly required
 ;V2.2	27.10.23	error in disk free calc 
-VERSION	= $22
+;V2.3	19.05.24	proper termination via BDOS(0)
+VERSION	= $23
 
 ;---- System Constants
 
@@ -44,6 +45,7 @@ DEF_DRV	= 26		;buffer for DEFDRV
 
 ;---- BDOS COMMANDS
 
+BOOT	= $00		;warm Boot
 CONIN	= $01		;CONSOLE INPUT
 CONOUT	= $02		;CONSOLE OUTPUT
 STROUT	= $09		;PRINT STRING
@@ -108,7 +110,8 @@ DIRX	LDA #END_MESS
 	LDA DEF_DRV
 	LDX #SELDRV		;LOGIN default DRIVE
 	JSR BDOS
-	RTS
+	LDX #BOOT		;warm boot
+	JMP BDOS
 
 DIR_CONT			;all entries in buffer - continue
 	JSR RESBUF		;RESET BUFFER POINTER
