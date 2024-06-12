@@ -9,8 +9,9 @@
 ;V2.0	27.12.22	send & receive
 ;V2.1	02.01.23	some improvements & cleanup
 ;V2.2	22.01.23	Speed improvement, preset to 38,4 kB
+;V2.3	20.05.24	check for mem overflow on receive
 
-VERSION	= $22		;VERSION NUMBER
+VERSION	= $23		;VERSION NUMBER
 ;================================================
 
 ;KONSTANTEN
@@ -85,7 +86,7 @@ CONS	= ZP+17		;half bit time / bit time
 SPEED	= ZP+19		;SPEED flag bit 7 1 38400 Baud
 			;               6 1 19200 Baud
 
-CCPV	= $DE
+CCPV	= $E0
 BDOS	= $F0
 FCB1	= $F6
 DMA	= $FE
@@ -258,8 +259,26 @@ IncBlk	INC BLKNO	; done.  Inc the block #
 	STA PTR
 	BCC INCBLK1
 	INC PTR+1
-INCBLK1	LDA #ACK	; send ACK
+INCBLK1	LDY PTR+1	;check for end of memory
+	INY
+	CPY BDOS+2	;test HIMEM
+	BCS INCBLK2
+	LDA #ACK	; send ACK
 	JMP StartBlk	; get next block
+
+INCBLK2	JSR TERM		;terminate XMODEM receive
+	lda #FILE_TOO_LONG	;fatal error
+	SEC
+	RTS
+
+
+TERM	LDX #3		;terminate XMODEM receive
+TERM1	LDA #CAN	;end transfer
+	JSR PUT_CHR
+	DEX
+	BNE TERM1
+	JSR FLUSH	; flush buffer
+	RTS
 
 
 ;^^^^^^^^^^^^^^^^^^^^^^ Start of XModem send ^^^^^^^^^^^^^^^^^^^^^^
