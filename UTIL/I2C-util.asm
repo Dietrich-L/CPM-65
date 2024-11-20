@@ -4,8 +4,9 @@
 ;V1.1	08.07.21	BIOS compatibility
 ;V1.2	10.07.21	BIOS V2.B version
 ;V1.3	25.03.23	BIOS V3.2 version
+;V1.5	20.11.24	Command G added
 
-VERSION	= $13
+VERSION	= $15
 
 ;SYSTEM CONSTANTS
 DMA	= $FE
@@ -14,7 +15,7 @@ FCB1	= $F6
 FCB2	= $F4
 BDOS	= $F0
 INBUF	= $EC
-CCPV	= $DE
+CCPV	= $E0
 TPA	= $0200
 BUFBEG	= $8000
 
@@ -315,6 +316,44 @@ SET	JSR G1ADR	;Set adr, reg, byte
 	LDY #C_I2CSTOP
 	JSR JBIOS
 SETX	RTS
+
+
+GET	JSR G1ADR	;Get byte from adr, reg, #
+	BCS GETX
+	AND #$7F	;bits 7 must be 0
+	STA PNT		;adr
+	JSR GETHEX
+	BCS GETX
+	STA PNT+1	;register byte
+	JSR GETHEX
+	BCS GETX
+	STA PNT+2	;#
+	LDA PNT
+	LDY #C_I2CADEV	;select dev for Write
+	JSR JBIOS
+	BCS GETX
+	LDA PNT+1
+	LDY #C_I2CWBYTE	;set register to write
+	JSR JBIOS
+	BCS GETX
+	LDA PNT
+	LDY #C_I2CRDEV	;set device for read
+	JSR JBIOS
+	BCS GETX
+GET1	LDY #C_I2CRBYTE	;read byte from reg
+	JSR JBIOS
+	BCS GETX
+	JSR PRTHEX	;and print it
+	DEC PNT+2
+	BEQ GET2
+	LDA #',
+	JSR PRTCHR
+	JSR PRTSP
+	JMP GET1
+	
+GET2	LDY #C_I2CRLB	;read dummy byte
+	JSR JBIOS
+GETX	RTS
 
 
 READ	JSR G1ADR	;read from adr, reg word,
@@ -1089,6 +1128,8 @@ CMDTAB	DB 'Z'
 	DD LOAD_ID-1
 	DB 'S'
 	DD SET-1
+	DB 'G'
+	DD GET-1
 	DB 'R'
 	DD READ-1
 	DB 'W'
@@ -1169,6 +1210,7 @@ HELPM	DB CLS,'   I2C-Utility V',VERSION/16+$30,'.',VERSION*$1000/$1000+$30
 	DB ' Ldv,iiii  load ID data set from dev to buffer',CR,LF
 	DB ' Baddr  set buffer to addr  '
 	DB ' Sdv,rg,by  set dev, reg, byte',CR,LF
+	DB ' Gdv,rg,nn  get nn bytes from dev, reg ',CR,LF
 	DB ' Rdv,regw,nnnn  read from dev, reg16, nnnn bytes to buffer',CR,LF
 	DB ' Wdv,regw,nnnn  write to  dev, reg16, nnnn bytes from buffer',CR,LF
 	DB ' CHad,by,by,...	change value at ad with by',CR,LF
