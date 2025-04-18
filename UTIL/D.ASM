@@ -1,4 +1,4 @@
-;D.COM   -  DIRECTORY Utility
+;D.COM   -  DIRECTORY Utility JC II Version
 ;by D. Lausberg		(c) 1991
 
 ;V1.0	16.01.91
@@ -10,12 +10,14 @@
 ;V1.6	29.04.21	no disc change on drives E: and above
 ;V2.0	24.02.22	sorted DIR
 ;V2.1	30.07.23	disc change only if implicitly required
-;V2.2	27.10.23	error in disk free calc 
+;V2.2	27.10.23	error in disk free calc
 ;V2.3	19.05.24	proper termination via BDOS(0)
-VERSION	= $23
+;V2.4	18.04.25	/P option
+VERSION	= $24
 
 ;---- System Constants
 
+DMA     = $FE
 DIRBUF	= $FC
 DPH	= $F8
 FCB1	= $F6
@@ -42,6 +44,9 @@ ERRNO	= 23		;BUFFER FOR ERROR NUMBER
 SPBDIV	= 24		;LOG(2) SPB
 C_BUF   = 25		;Buffer for C
 DEF_DRV	= 26		;buffer for DEFDRV
+SWITCH	= 27		;Bit 7 = /P flag
+L_CNT	= 28		;line counter
+PNT	= 29
 
 ;---- BDOS COMMANDS
 
@@ -54,8 +59,17 @@ SELDRV	= $0E		;select drive
 FIRST	= $11		;GET 1. DIR ENTRY
 NEXT	= $12		;GET NEXT DIR ENTRY
 GETDRV	= $19		;GET DEFAULT DRIVE
+BIOS	= $1A
+
+;---- BIOS COMMANDS
+
+_CONST	= 2
+_CHRIN	= 3
+_CHROUT	= 4
+
 
 ;---- KONSTANTEN
+L_BLOCK	= 15		;# lines per block for /P
 
 FCB_FLG	= 0
 FCB_EXT	= 12
@@ -156,11 +170,14 @@ INIT	LDA #0			;init pointers & vars
 	STA S_FILES		;Reset filesize counter
 	STA S_FILES+1
 	STA COL
+	LDA #L_BLOCK	;set line counter
+	STA L_CNT
 	JSR RESBUF
 	JSR XCH_DSK		;exchange disks if needed
 	BCS INITX
 INIT4	JSR FCB_CHECK		;check for ?,*
-INITX	RTS
+INITX	JSR SET_SW
+	RTS
 
 
 XCH_DSK	LDX #DEFDRV		;set default drive
@@ -179,8 +196,7 @@ XCH_DSK	LDX #DEFDRV		;set default drive
 	LDA #XCHGM
 	LDY #XCHGM/256		;INSERT DISK
 	JSR PRTSTR
-	LDX #CONIN		;WAIT FOR KEY
-	JSR BDOS
+	JSR WAITKEY
 	JSR CRLF
 XCHDSKX	PLA			;login drive
 	SEC
@@ -192,6 +208,11 @@ XCHD1	LDY #6+1		;GET SPBDIV
 	LDA (DPH),Y
 	STA SPBDIV
 XCHGDX	RTS
+
+
+WAITKEY	LDX #BIOS		;WAIT FOR KEY
+	LDY #_CHRIN
+	JMP BDOS
 
 
 DIRSORT	JSR SET_BIP		;set Buffer index pointer to last entry
@@ -317,8 +338,6 @@ PR_FILE	JSR INCBIP		;Print 1 File entry from DIR
 	JMP ADD_REC		;ext > 0
 
 PR_FIL1	JSR PR_REC		;ext = 0
-	JMP PR_FN
-
 PR_FN	LDY #FCB_FLG
 	LDA (BUFPNT),Y
 	JSR PRT_BIT		;FLAG BITS
@@ -429,7 +448,16 @@ PRREC2	LDA RECBUF
 	RTS
 
 PRREC1	DEC COL
-	JSR CRLF
+	DEC L_CNT
+	BPL PRRECX
+	LDX #L_BLOCK
+	STX L_CNT
+	BIT SWITCH
+	BPL PRRECX
+	PHA
+	JSR WAITKEY
+	PLA
+PRRECX	JSR CRLF
 	RTS
 
 
@@ -489,9 +517,11 @@ RESBUF	LDA #BUF
 FCB_CHECK
 	LDY #1
 	LDA (FCB1),Y		;CHECK FOR ARGUMENT
-	CMP #SP
+	CMP #'/			;switch found with no argument?
+	BEQ FCB_3
+	CMP #SP			;no argument?
 	BNE FCB_1
-	LDA #'?			;SET FCB1 TO *.*
+FCB_3	LDA #'?			;SET FCB1 TO *.*
 	LDY #11
 FCB_2	STA (FCB1),Y
 	DEY
@@ -499,6 +529,40 @@ FCB_2	STA (FCB1),Y
 FCB_1	CLC
 	RTS
 
+
+SET_SW	LDY #0
+	LDA (DMA),Y		;CHECK FOR SWITCH
+	STA PNT
+SETSW3	INY
+	CPY PNT
+	BCS SETSW2
+	LDA (DMA),Y
+	CMP #'/			;SWITCH?
+	BNE SETSW3
+	INY
+	CPY PNT
+	BCS SETSW2
+	LDA (DMA),Y		;GET SWITCH
+	LDX #0
+SETSW4	CMP SWTAB,X
+	BEQ SETSW5
+	INX
+	INX
+	CPX #SWTABX-SWTAB
+	BCC SETSW4
+SETSW2	LDA #0
+	STA SWITCH
+	CLC
+	RTS
+
+SETSW5	INX
+	LDA SWTAB,X
+	ORA SWITCH
+	STA SWITCH
+	CLC
+	RTS
+
+;========= Error Routine ===========
 
 ERROR	STA ERRNO	;ERROR ROUTINE
 	JSR CRLF
@@ -613,6 +677,10 @@ PRTNI1  ADC #$30
 	JSR PRTCHR
 	RTS
 
+;--- Tables ---
+
+SWTAB	DB 'P',$80,'p',$80
+SWTABX
 
 ;======   MESSAGES  ======
 
@@ -634,7 +702,8 @@ CRLFM	DB CR,LF,EOT
 
 START_MESS
 	DB CR,LF,'D.COM V',VERSION/16+$30,'.',VERSION*$1000/$1000+$30
-	DB '      (c) D.Lausberg',CR,LF,EOT
+	DB '      (c) D.Lausberg',CR,LF
+	DB 'Usage d [d:][filename.ext][/p(ause)]]',CR,LF,EOT
 HEADER	DB CR,LF,'Attr filename.ext   rec    kB    '
 	DB 'Attr filename.ext   rec    kB'
 	DB CR,LF,EOT
