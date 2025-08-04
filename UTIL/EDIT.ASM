@@ -2,8 +2,8 @@
 ;BY D. LAUSBERG	 (C)2022
 ;V1.0	06.12.22
 ;V1.1	28.06.23	correct error message when deleting chr at pos 0
-
-VERSION	= $11
+;V1.2	09.07.25	error corrections & improvements
+VERSION	= $12
 
 ;SYSTEM CONSTANTS
 
@@ -11,7 +11,7 @@ DMA	= $FE
 FCB1	= $F6
 BDOS	= $F0
 INBUF	= $EC
-CCPV	= $DE
+CCPV	= $E0
 TPA	= $0200
 
 ;Page 0 cells
@@ -39,6 +39,7 @@ ABUF	= $16		;temp buffer
 XBUF	= $17
 ERRNO	= $18
 ERRCNT	= $19		;error counter for RDFILE
+CNT	= $1A		;counter
 
 ;BDOS COMMANDS
 
@@ -264,7 +265,7 @@ CURUP	JSR DECLINE	;cursor up
 	SBC LINE+1
 	BCS CURUP2	;if yes -> update screen
 	JSR LIN12LINE
-	JMP UPDSCR
+CURUP3	JMP UPDSCR
 
 CURUP2	JSR LIN12LINE
 	JSR OUTVT
@@ -275,6 +276,8 @@ CURUP1	CLC
 CURDN	JSR INCLINE	;cursor down
 	BCS CURDN1
 	JSR LIN12L
+	JSR Q1LIN	;1. line of next screen reached?
+	BCC CURUP3	;then show next screen
 	JSR OUTLF
 CURDN1	CLC
 	RTS
@@ -300,9 +303,9 @@ PAGEDN1	CLC		;do nothing
 	RTS
 
 
-RETURN	BIT MODE	;do CR
+RETURN	JSR CURZERO	;set cursor to col 0
+	BIT MODE	;do CR
 	BMI RET1	;if OW mode
-	JSR CURZERO	;set cursor to col 0
 	JSR INCLINE	;inc LINE result in LIN1
 	BCC RET2	;if new line
 	JSR ILINE	;insert it
@@ -316,33 +319,40 @@ RET2	JSR LIN12LINE
 	CLC
 RETX	RTS
 
-RET1	JSR CURZERO	;INS mode
-	JSR ILINE
+RET1	JSR ILINE	;INS mode
 	BCS RETX
 	JSR LINE2LIN1
 	JSR CLRLINE
 	JSR SETLC
-	JSR P2EOL	;print complete line
-	JSR OUTLF
-	LDA LINE
+PRT2EOS	LDA LINE	;print to end of screen
 	PHA
 	LDA LINE+1
 	PHA
+	LDA #0		;set line cnt = 0
+	STA CNT
+RET4	JSR SETLC	;print rest of page
+	JSR P2EOL	;print complete line
 	JSR INCLINE
 	JSR LIN12L
-	JSR SETLC
-	JSR P2EOL	;print complete line
+	JSR Q1LIN	;1. line of next page reached?
+	BCC RET3
+	JSR OUTLF
+	INC CNT
+	BNE RET4
+
+RET3	JSR OUTVT	;move cursor to inserted line
+	DEC CNT
+	BNE RET3
 	PLA
 	STA LINE+1
 	PLA
 	STA LINE
-	JSR OUTVT
 	RTS
 
 
 DELLINE	JSR INCLINE	;delete line
-	BCC DELLIN1
-	JSR DELLIN2	;clear line
+	BCC DELLIN1	;last line?
+	JSR DELLIN2	;yes -> clear line
 	LDA #LLEN+1	;DEC TXTEND by LLIN+1
 	LDY #0
 	JSR DECTEND
@@ -350,7 +360,7 @@ DELLINE	JSR INCLINE	;delete line
 
 DELLIN1	LDA LINE+1	;LINE=TXTEND?
 	LDY LINE
-	JSR CHKBUF
+	JSR CHKBUF	;1. line?
 	BCS DELLIN2
 	LDA LINE	;move A/Y bytes to LINE until TXTEND
 	STA TA
@@ -366,9 +376,9 @@ DELLIN1	LDA LINE+1	;LINE=TXTEND?
 	LDA #LLEN+1	;DEC TXTEND by LLIN+1
 	LDY #0
 	JSR DECTEND
-	JMP UPDSCR
+	JMP PRT2EOS	;print rest of screen
 
-DELLIN2	JSR LINE2LIN1
+DELLIN2	JSR LINE2LIN1	
 	JSR CLRLINE
 	JSR SETLC
 	JSR P2EOL
@@ -543,7 +553,7 @@ INIT	JSR RESVEC	;init variables
 	STY HIMEM+1
 	LDA BDOS+1
 	STA HIMEM
-
+	JSR DELLINE	;delete 1. line
 	LDY #1
 	LDA #SP		;check for filename
 	CMP (FCB1),Y
@@ -587,7 +597,7 @@ RESVEC	LDA #0		;init file variables
 	STA ERRCNT
 	STA ERRCNT+1
 	JSR SETLIN0
-	STA TXTEND		;set TXTEND = BUFFER
+	STA TXTEND	;set TXTEND = BUFFER
 	STY TXTEND+1
 	RTS
 
@@ -597,10 +607,10 @@ WAITKEY	LDA #$FF
 	JMP BDOS
 
 
-GETCHR	LDA #$FF		;get chr from TTY
+GETCHR	LDA #$FF	;get chr from TTY
 	LDX #CONIO
 	JSR BDOS
-TSTCHR	CMP #$1F
+TSTCHR	CMP #$20
 	BCS GETCHR1
 	SEC		;CTRL code
 	RTS
@@ -610,7 +620,7 @@ GETCHR1 AND #$7F
 	RTS
 
 
-INCLINE	JSR INCLIN		;inc LINE by LLEN+1
+INCLINE	JSR INCLIN	;inc LINE by LLEN+1
 	STY LIN1
 	STA LIN1+1
 
@@ -619,8 +629,8 @@ CHKTXE	CMP TXTEND+1	;check Y/A for > TXTEND
 	BNE CHKTXE2
 	CPY TXTEND
 	BCC CHKTXE1
-CHKTXE2	SEC
-CHKTXE1	RTS
+CHKTXE2	SEC		; > TXTEND
+CHKTXE1	RTS		; < TXTEND
 
 
 INCLIN	CLC
@@ -729,7 +739,11 @@ DECTEN1	SEC
 	RTS	
 	
 
-ILINE	LDA #LLEN+1	;insert line at LINE
+ILINE	LDA TXTEND	;insert line at LINE
+	STA SA
+	LDA TXTEND+1	;SA = old TXTEND
+	STA SA+1
+	LDA #LLEN+1
 	LDY #0
 	JSR INCTEND	;inc TXTEND
 	BCS ILINEX
@@ -737,46 +751,43 @@ ILINE	LDA #LLEN+1	;insert line at LINE
 	STA TA
 	LDA TXTEND+1
 	STA TA+1
-	LDA LINE	;set SA = LINE
-	STA SA
-	LDA LINE+1
-	STA SA+1
-	LDA #LLEN+1
-	LDY #0
+	SEC
+	LDA SA		;PNT = SA - LINE
+	SBC LINE
+	STA PNT
+ 	LDA SA+1
+	SBC LINE+1
+	STA PNT+1
+	BCC ILINE1
 	JSR MOVUP
 	CLC
 ILINEX	RTS
 
-	
-MOVUP	SEC		;move mem from SA to TA by A/Y L/H
-	STA PNT
-	STY PNT+1
-	LDA TA
-	SBC PNT
-	STA PNT
-	LDA TA+1
-	SBC PNT+1
-	STA PNT+1
-	LDY #0
-MOVUP1	LDA (PNT),Y	;move it
+ILINE1	LDA #MEMOVL
+	SEC
+	RTS
+
+
+MOVUP	LDY #0		;move PNT bytes from SA to TA
+MOVUP1	LDA (SA),Y	;move it
 	STA (TA),Y
-	LDA PNT+1
-	CMP SA+1
+	LDA SA		;dec SA
 	BNE MOVUP2
-	LDA PNT
-	CMP SA
-	BEQ MOVUPX	;SA reached?
-MOVUP2	DEC PNT
+	DEC SA+1
+MOVUP2	DEC SA
+	LDA TA		;dec TA
 	BNE MOVUP3
-	DEC PNT+1
-MOVUP3	DEC TA		;dec TA
-	BNE MOVUP1
 	DEC TA+1
-MOVUP4	BNE MOVUP1
-
+MOVUP3	DEC TA
+	LDA PNT
+	BNE MOVUP4
+	DEC PNT+1
+MOVUP4	DEC PNT		;dec PNT
+	LDA PNT+1
+	CMP #$FF	;finished?
+	BNE MOVUP1
+	CLC
 MOVUPX	RTS
-
-
 MOVDN	CLC		;move mem from TA + A/Y to TA until SA
 	ADC TA
 	STA PNT
@@ -819,9 +830,27 @@ F1LIN	SEC		;find 1. line of actual screen
 	AND #%11111100	;modulo $3ff = 16 lps
 	CLC
 	ADC #BUFFER/256
-	STA LINE+1
+	STA LINE+1	;set LINE to 1. line
 	LDA #BUFFER
 	STA LINE
+	RTS
+
+
+Q1LIN	SEC		;is LINE the 1. line of actual screen
+	LDA LINE
+	SBC #BUFFER
+	TAY
+	LDA LINE+1
+	SBC #BUFFER/256
+	AND #%00000011	;modulo $3ff = 16 lps
+	BNE Q1LIN1
+	TYA
+	AND #%11000000
+	BNE Q1LIN1
+	CLC		;C=0 yes it is the 1. line
+	RTS
+
+Q1LIN1	SEC		;C=1 no, its another line
 	RTS
 
 
