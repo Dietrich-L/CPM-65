@@ -1,9 +1,10 @@
-;EDIT.COM -- CP/M-65 DEBUGGER
+;EDIT.COM -- CP/M-65 Editor
 ;BY D. LAUSBERG	 (C)2022
 ;V1.0	06.12.22
 ;V1.1	28.06.23	correct error message when deleting chr at pos 0
-;V1.2	09.07.25	VT compatible version & error corrections
-VERSION	= $12
+;V1.3	07.10.25	writes now the last block with spaces
+
+VERSION	= $13
 
 ;SYSTEM CONSTANTS
 
@@ -1042,16 +1043,26 @@ FWRITA	JSR WCHR	;FORTH file
 	STA PNT
 	BEQ FWRITA
 
-FWRIT8	LDA PNT+1	;check last record not written
-	BEQ FWRIT9
-	TAY
-	LDA #SP
+FWRIT8	LDY PNT+1	;check last record not written
+	BEQ FWRIT9	;finish writing 
+FWRITB	LDA #SP
 FWRIT7	STA (DMA),Y	;fill rest of page with SPs
 	INY
 	BNE FWRIT7
-	LDX #WRITE	;write last record
+	LDX #WRITE	;write additional record
 	JSR BDOS
 	BCS FWRITX
+	BIT MODE	;is it a TXT file?
+	BVC FWRIT9	;if no then
+	INC LIN1+1
+	SEC
+	LDA LIN1+1	;write full 1k block with SPs
+	SBC #BUFFER/256
+	AND #%00000011	;check for last page in block
+	BEQ FWRIT9
+	LDY #0
+	BEQ FWRITB
+
 FWRIT9	LDX #CLOSE	;close file
 	JSR BDOS
 	BCS FWRITX
