@@ -22,11 +22,13 @@
 ;V3.0	07.02.22	BOOTPROM v3.0 version
 ;V3.1	25.03.23	BOOTPROM v3.2 version
 ;V3.2	06.07.23	SCSI Write error correction
+;V3.3	22.10.25	SD Card integration
 
-VERSION	= $32		;VERSION NUMBER
+VERSION	= $33		;VERSION NUMBER
 
-;FORMAT	DS/DD	320 KBYTES/DISK
-;SCSI2HD	2x 16 MBytes on SCSI ID1
+;FORMAT	DS/DD	320 KBYTES/DISK, 4 Drives 0..3
+;SCSI2HD	4x 16 MBytes on SCSI ID1  4..7
+;SD		4x  1 MByte IMG on SD partition (FAT 12/16/32) 8..12
 ;=====================================
 
 ;PAGE 00 CELLS
@@ -79,9 +81,20 @@ FDDAR	= UDC+$53	;R/W DATA REGISTER
 FLSTAT	= UDC+$60	;IRQ --> BIT 7, DRQ --> BIT 6
 
 ;VIA ADDRESSES
+;SPI driver  Mode 0 uses VIA DRB
+;BIT 1	CS
+;Bit 0	MOSI
+; CB 1	CLK
+; CB 2	MISO
 
+DRB	= $F400
 DRA	= $F401
+DDRB	= $F402
 DDRA	= $F403
+T2CL	= $F408
+T2CH	= $F409
+SR	= $F40A
+ACR	= $F40B
 PCR	= $F40C
 IFR	= $F40D
 IER	= $F40E
@@ -90,23 +103,30 @@ IER	= $F40E
 
 SCRATCH	= $F600
 
+;--- buffer for SD CARD
+
+SD_TYPE	= SCRATCH+$45		;SD Card Type
+LBA	= SCRATCH+$46		;LSB ... MSB
+SPEED	= SCRATCH+$4A		;SPEED flag b7=1 38400 Bd; b6=1 19200 Bd
 I2CDEV	= SCRATCH+$4B		;I2C device nr 7 Bit
 ID	= SCRATCH+$4C		;I2C memory data set ID
 PNT16	= SCRATCH+$4E		;I2C 16 bit register
 ADR	= SCRATCH+$50		;I2C adress pointer
 ENDADR	= SCRATCH+$52		;I2C end adress
 STPRATE	= SCRATCH+$54		;Steprate $00: 6ms, $01: 12 ms
-COMBUF	= SCRATCH+$5A		;6 Byte SCSI Command Buffer
-MODE	= SCRATCH+$60		;MODE SWITCH FOR HEX MONITOR & Buffer for FD_ST
+BLK	= SCRATCH+$55		;BLK = SECS/2 (H/M/L)
+BITTIME	= SCRATCH+$58		;bit delay for COM
+HBTTIME	= SCRATCH+$59		;half bit delay for COM
+COMBUF	= SCRATCH+$5A		;6 Byte SCSI Command Buffer  .. $5F
+MODE	= SCRATCH+$60		;MODE SWITCH FOR HEX MONITOR
 KEY	= SCRATCH+$61		;KEY BUFFER FOR HEX KEYBOARD
 TIME	= SCRATCH+$62		;8 BIT TIME FOR ELEKTERMINAL
-XBUF	= SCRATCH+$63
+YBUF	= SCRATCH+$63		;Y buffer for CHRIN & CHROUT
 CHARBUF	= SCRATCH+$64
 CHR	= SCRATCH+$65
 ABUF	= SCRATCH+$66		;ACCU BUFFER FOR IRQ ROUTINE
-SCSI_B	= SCRATCH+$67		;SCSI BLOCK BUFFER (H/M/L)
-
-SCSI_F	= SCRATCH+$6A		;SCSI FLAG BIT7 = dirty
+B_BLK	= SCRATCH+$67		;BLOCK BUFFER # (H/M/L)
+BBLK_F	= SCRATCH+$6A		;BLK FLAG BIT7 = dirty
 DRIVE	= SCRATCH+$6B
 TRACK	= SCRATCH+$6C		;TRACK BUFFER FOR ROM-BIOS
 SECTOR	= SCRATCH+$6D		;SECTOR BUFFER FOR ROM-BIOS
@@ -136,6 +156,10 @@ CLS	= $0C		;CLEAR SCREEN
 
 ;ERROR CODES
 
+INVDRV	= $85
+WRT_PROT = $86
+SD_CHNG	= $87
+NO_SD	= $88
 SCSI_TIMEOUT = $F7
 SCSI_ERROR = $F6
 I2CError = $F5
@@ -155,6 +179,24 @@ RD_COM	= $08		;SCSI READ BLOCK
 WR_COM	= $0A		;SCSI WRITE BLOCK
 SENSE_COM = $03		;SCSI SENSE STATUS
 
+;--- SD Command Constants 
+
+CMD0	= $40		; Reset SD-Card
+CMD1	= CMD0 + 1	; Initialize MMC/SDC
+CMD8	= CMD0 + 8	; Check voltage range
+CMD13	= CMD0 + 13	;
+CMD16	= CMD0 + 16	; Change block size
+CMD17	= CMD0 + 17	; Read single block
+CMD24	= CMD0 + 24	; Write single block
+CMD55	= CMD0 + 55	; Application command prefix
+CMD58	= CMD0 + 58	; Get OCR
+ACMD41	= CMD0 + 41	; Initialize SDC
+
+DATA_TOKEN	= $FE	; SD-Card Data Token Read Block
+
+SD1ST	= 8		;I: is 1. drive on SD
+SDMAX	= 12		;drives I..L on SD
+
 ;I2C adresses
 RTC	= $68
 24C32	= $57
@@ -171,11 +213,11 @@ SPBDIV	= 2		;LOG(2) SPB
 SYS	= 32		;SYSTEM sectors
 BPD	= MAXTRK*SPT-SYS/SPB-1	;BLOCKS PER DISK
 DIRSCS	= 16		;DIRECTORY SECTORS
-DIRMSK	= %11110000	;DIR MASK FOR BAT
+DIRMSK	= %11111111	;DIR MASK FOR BAT
 RPEXT	= 8*SPB*2 	;RECORD PER EXTENT
 BATSIZ	= BPD/8		;SIZE OF BAT
 
-DIRSCSC	= 32		;Directory sectors SCSI
+DIRSCSC	= 32		;Directory sectors SCSI&SD
 
 MAXTRY	= 10		;MAX TRIES ON ERROR
 
@@ -215,6 +257,7 @@ FBIOS	JMP BOOT		; 00
 	JMP I2CLOADID		; 1D
 	JMP ROM_I2CGTime	; 1E
 	JMP ROM_I2CGDate	; 1F
+	JMP MOUNT		; 20
 
 ;========== DATA AREA =============
 
@@ -231,9 +274,8 @@ DPHA	DW DIRBF	;DISK PARAMETER HEADER
 	DB SYS,0,0
 	DB BATSIZ
 
-
-DPHE	DW DIRBF	;Disk Parameter Header for Drive E
-	DW DMA
+DPHE	DW DIRBF	;Disk Parameter Header for Drive E-H
+	DW DMA		;FOR DRIVE E-H
 	DW BAT
 
 	DB 31		;SPB	DISK PARAMETER BLOCK
@@ -245,27 +287,33 @@ DPHE	DW DIRBF	;Disk Parameter Header for Drive E
 	DB SYS,0,0	;SYS
 	DB $7FF/8	;BATSIZ
 
-DPHF	DW DIRBF	;Disk Parameter Header for Drive F
-	DW DMA
+DPHI	DW DIRBF	;DISK PARAMETER HEADER
+	DW DMA		;FOR DRIVE I-L
 	DW BAT
 
-	DB 31		;SPB	DISK PARAMETER BLOCK
-	DB  5		;SPBDIV
-	DW $7FF		;BPD
-	DB DIRSCSC	;DIRSCSC is used in SCSI_WR
-	DB %10000000	;DIRMSK
-	DB $80		;RPEXT
-	DB $00,$00,$01	;SYS
-	DB $7FF/8	;BATSIZ
-
-BAT	DB %10000000	;Block Allocation Table Drive A-F
-	DS $FF		;max. 1 page
-
+	DB 8-1		;SPB DISK PARAMETER BLOCK FOR DISK I-L
+	DB 3		;SPBDIV
+	DW 128*32-32/8-1 ;BPD
+	DB DIRSCSC	;DIRSCSC
+	DB %11110000	;DIRMSK
+	DB 8*8*2	;RPEXT
+	DB SYS,0,0	;SYS
+	DB 128*32-32/8-1/8 ;BATSIZ
 
 ;--- DRIVE TABLE Floppy Drives---
 
 DRVTAB	DB $01,$02,$04,$08		;DRIVE Select TABLE
-TRKTAB	DB 0,0,0,0			;TRACK TABLE
+TRKTAB	DB 0,0,0,0
+
+;--- Disk Image TABLE ---
+
+IMGTAB	DS 4*4,0	;Base Sector address of disk images mounted
+IMGSTAT	DS 4,0		;Flag $FF valid image, $00 no image
+
+;--- BAT ----
+
+BAT	DB %10000000	;Block Allocation Table Drive A-J
+	DS $FF		;max. 1 page
 
 ;--- ERROR TABLES---
 
@@ -278,7 +326,6 @@ SET_SRATE
 	DB $57			;EEPROM adr
 	DW $8001		;ID
 	DW STPRATE		;steprate bytes memory location
-
 
 ;==================================
 
@@ -297,6 +344,7 @@ BOOT	LDA #$4C		;SET JMP BDOS
 	LDA #%11111111
 	STA DDRA
 	JSR SCSI_RST		;reset SCSI
+	JSR SD_INIT		;init SD
 	LDA PADD	
 	ORA #%00000001		; PA0 is Output for I2C SCL
 	STA PADD
@@ -344,8 +392,11 @@ HOME0	JSR READY
 	AND #%10011001		;MASK SEEK ERROR
 	BNE HERR1
 	STA TRACK		;SET TRACK=0
-HOME2	CLC
 HOMEX	RTS
+
+HOME2	CMP #SD1ST
+	BCC HOMEX		;is SCSI?
+	JMP SD_INIT		;else init SD
 
 HERR1	JSR ERROR		;CHECK ERROR COUNT
 	BCC HOME0		;RETRY
@@ -354,36 +405,36 @@ HERR1	JSR ERROR		;CHECK ERROR COUNT
 
 SELDSK	CMP #4			;TEST FOR DRIVE A to D
 	BCS SELDS1
-	STA DRIVE		;SELECT DISK LOGICAL
-	LDA #DPHA		;SET DPHVEC
-	STA DPHV
-	LDA #DPHA/256
-	STA DPHV+1
+	LDX #DPHA		;SET DPHVEC
+	LDY #DPHA/256
+SELDS0	STA DRIVE		;SELECT DISK LOGICAL
+	STX DPHV
+	STY DPHV+1
 	CLC
 	RTS
 
-SELDS1	CMP #4			;TEST FOR DRIVE E
-	BNE SELDS2
-	STA DRIVE		;SELECT DISK E LOGICAL
-	LDA #DPHE		;SET DPHVEC
-	STA DPHV
-	LDA #DPHE/256
-	STA DPHV+1
-	CLC
-	RTS
+SELDS1	LDY #$01		;select block device E - SDMAX
+	STY BBLK_F		;mark BLK buffer as invalid
+	CMP #8			;TEST FOR SCSI DRIVE E - H
+	BCS SELDS3
+	LDX #DPHE		;SET DPHVEC
+	LDY #DPHE/256
+	BNE SELDS0
 
+SELDS3	CMP #SDMAX		;TEST FOR DRIVE I to SDMAX
+	BCS SELDS4
+	PHA
+	AND #%00000011		;bits 0&1 are index
+	TAX
+	LDA IMGSTAT,X		;check if an image is mounted
+	BEQ SELDS5
+	PLA
+	LDX #DPHI		;SET DPHVEC
+	LDY #DPHI/256
+	BNE SELDS0
 
-SELDS2	CMP #5			;TEST FOR DRIVE F
-	BNE SELDS3
-	STA DRIVE		;SELECT DISK F LOGICAL
-	LDA #DPHF		;SET DPHVEC
-	STA DPHV
-	LDA #DPHF/256
-	STA DPHV+1
-	CLC
-	RTS
-
-SELDS3	LDA #$F9		;ILLEGAL DRIVE NR
+SELDS5	PLA
+SELDS4	LDA #$F9		;ILLEGAL DRIVE NR
 	SEC
 	RTS
 
@@ -405,7 +456,7 @@ SETTRK	LDA #$FB		;Sector not found
 
 READ	LDA DRIVE
 	CMP #4			;CHECK FOR DRIVE > D
-	BCS SCSI_RD
+	BCS BLK_RD
 
 READ4	JSR DRVSEL		;READ SECTOR TO DMA
 	JSR FD_ST		;convert sec nr to sector/track
@@ -443,34 +494,33 @@ READ3	JSR ERROR
 	BCC READ0		;REREAD
 	BCS WRITE4
 
-
-SCSI_RD	JSR SETBLK		;SET BLK NR IN COMBUF
+BLK_RD	JSR SETBLK		;SET BLK=SECS/2
 	JSR CHKBLK		;CHECK IF BLOCK VALID
-	BCC SCSIRD1
-	JSR S_READ
-	BCS SCSIRDX
-SCSIRD1	LDA SECS
+	BCC BLKRD1
+	JSR B_READ		;read BLK to buffer
+	BCS BLKRDX
+BLKRD1	LDA SECS
 	LSR A
 	LDY #0
-	BCS SCSIRD3
-SCSIRD2	LDA SCSIBUF,Y
+	BCS BLKRD3
+BLKRD2	LDA BLKBUF,Y
 	STA (DMAV),Y
 	INY
-	BNE SCSIRD2
+	BNE BLKRD2
 	CLC
 	RTS
 
-SCSIRD3	LDA SCSIBUF+256,Y
+BLKRD3	LDA BLKBUF+256,Y
 	STA (DMAV),Y
 	INY
-	BNE SCSIRD3
+	BNE BLKRD3
 	CLC
-SCSIRDX	RTS
+BLKRDX	RTS
 
 
 WRITE	LDA DRIVE
 	CMP #4			;CHECK FOR DRIVE > D
-	BCS SCSI_WR
+	BCS BLK_WR
 
 WRITE5	JSR DRVSEL		;WRITE SECTOR IN DMA
 	JSR FD_ST		;convert sec nr to sector/track
@@ -508,50 +558,47 @@ WRITE3	JSR ERROR
 WRITE4	LDY #13
 	JMP FDERR
 
-SCSI_WR	JSR SETBLK		;WRITE SCSI
+BLK_WR	JSR SETBLK		;WRITE BLK
 	JSR CHKBLK
-	BCC SCSIWR1
-	JSR S_READ		;write implicitely
-	BCS SCSIWRX		;when SCSI buffer dirty
-SCSIWR1	LDA SECS
+	BCC BLKWR1
+	JSR B_READ		;write implicitely
+	BCS BLKWRX		;when BLK buffer dirty
+BLKWR1	LDA SECS
 	LSR A
 	LDY #0
-	BCS SCSIWR2
-SCSIWR3	LDA (DMAV),Y
-	STA SCSIBUF,Y
+	BCS BLKWR2
+BLKWR3	LDA (DMAV),Y
+	STA BLKBUF,Y
 	INY
-	BNE SCSIWR3
-	BEQ SCSIWR4
+	BNE BLKWR3
+	BEQ BLKWR4
 
-SCSIWR2	LDA (DMAV),Y
-	STA SCSIBUF+256,Y
+BLKWR2	LDA (DMAV),Y
+	STA BLKBUF+256,Y
 	INY
-	BNE SCSIWR2	
-SCSIWR4	LDA #$80
-	STA SCSI_F		;SCSIBUF dirty
-	LDA SECS+2
-	BNE SCSIWR5
+	BNE BLKWR2	
+BLKWR4	LDA #$80
+	STA BBLK_F		;BLKBUF dirty
+;	LDA SECS+2
+;	BNE BLKWR5
 	LDA SECS+1
-	BNE SCSIWR5
+	BNE BLKWR5
 	LDA SECS
 	CMP #SYS+DIRSCSC	;is it a DIR block?		
-	BCS SCSIWR5
-	JSR SCSI_WB		;write SCSI block immediate
-SCSIWRX	RTS
+	BCS BLKWR5
+	JSR BB_SAVE		;write BLK block immediate
+BLKWRX	RTS
 
-SCSIWR5	CLC
+BLKWR5	CLC
 	RTS
 
-
 ;---	JMP ROM_LISTST
-
 
 
 GET_VERSION			;GET VERSION NUMBER
 
 	LDA #VERSION
 	RTS
-
 
 ;---	JMP ROM_SET_TIMER1
 
@@ -664,6 +711,65 @@ LDID2	CLC
 
 ;---	JMP ROM_I2CGDATE ;get date to p.00 cells
 
+MOUNT	TAX			;mount disk image on SD
+	LDA 0,X			;load drive to be mounted
+	AND #$3F
+	SEC
+	SBC #SD1ST
+	BCC MOU_ERR
+	CMP #SDMAX-SD1ST			;max I: - L:
+	BCS MOU_ERR
+	TAY
+	LDA 0,X
+	CMP #$40		;bit 6 or 7 set?
+	BCS MOUNT2
+	LDA #$FF		;mount disc image
+	STA IMGSTAT,Y		;set drive byte as valid
+	TYA
+	ASL A			;*4
+	ASL A
+	TAY
+	LDA #3			;4 bytes LBA
+	SEC
+MOUNT1	PHA
+	INX
+	LDA 0,X
+	STA IMGTAB,Y		;copy LBA block 0
+	INY
+	PLA
+	SBC #1
+	BCS MOUNT1
+	RTS
+
+MOUNT2	CMP #$80		;check for bit 7
+	BCS MOUNT3
+	LDA IMGSTAT,Y		;LBA invalid
+	BEQ MOU_ERR
+	TYA			;report LBA mounted
+	ASL A			;*4
+	ASL A
+	TAY
+	LDA #4			;4 bytes LBA
+MOUNT4	SEC
+	PHA
+	INX
+	LDA IMGTAB,Y		;copy LBA block 0
+	STA 0,X
+	INY
+	PLA
+	SBC #1
+	BNE MOUNT4
+	CLC
+	RTS
+
+MOUNT3	LDA #$00		;dismount drive
+	STA IMGSTAT,Y		;set drive byte as invalid
+	CLC
+	RTS
+
+MOU_ERR	LDA #INVDRV		;invalid drive #
+	SEC
+	RTS
 
 ; I2C subroutines
 
@@ -846,71 +952,141 @@ READY2	LDA #$FD		;DRIVE NOT READY
 	SEC
 	RTS
 
+; *****************************************************************************
+; Block device driver SCSI & SD
+; *****************************************************************************
 
-S_READ	BIT SCSI_F		;SCSI READ
-	BPL S_READ1		;if buffer dirty
-	JSR S_SAVE		;SAVE SCSI BUFFER
-	BCS S_READX
-S_READ1	LDA #RD_COM
+B_READ	BIT BBLK_F		;Read Block to BLKBUF
+	BPL B_READ1		;if BLKBUF dirty
+	JSR BB_SAVE		;SAVE BLKBUF
+	BCS B_READ4
+B_READ1	LDX #2			;set B_BLK = BLK
+BREAD3	LDA BLK,X
+	STA B_BLK,X
+	DEX
+	BPL BREAD3
+	INX			;X=0, UPDATE BBLK FLAG
+	STX BBLK_F
+	LDA #%00001000		;Read BLK to BLKBUF
+	BIT DRIVE		;is it SCSI or SD?
+	BNE BREAD1
+	JSR SCSI_RD		;read SCSI to BLKBUF
+	BCS BREADX
+B_READ4	RTS
+
+BREAD1	JSR SD_RD		;read SD to BLKBUF
+	BCC B_READ4
+
+BREADX	LDX #1
+	STA BBLK_F		;mark BLKBUF as invalid
+	RTS
+
+
+BB_SAVE	LDA #%00001000		;SAVE BLKBUF
+	BIT DRIVE		;is it SCSI or SD?
+	BNE BBSAV1
+	JSR SCSI_WB		;write BLKBUF to SCSI at B_BUF
+	BCC BBSAV2
+BBSAVX	RTS
+
+BBSAV1	JSR SD_WR
+	BCS BBSAVX
+BBSAV2	LDA #0			;mark BLKBUF as clean
+	STA BBLK_F
+	RTS
+
+
+SETBLK	LDX #2			;BLK=SECS/2
+	CLC
+SETBLK1	LDA SECS,X
+	ROR A
+	STA BLK,X
+	DEX
+	BPL SETBLK1
+	RTS
+
+
+CHKBLK	LDX #2			;CHECK IF BLK IN BUFFER VALID
+CHKBL2	LDA BLK,X		;C=1 invalid
+	CMP B_BLK,X
+	BNE CHKBL1
+	DEX
+	BPL CHKBL2
+	LDA BBLK_F
+	LSR A
+	RTS
+
+CHKBL1	SEC
+	RTS
+
+
+; *****************************************************************************
+; SCSI routines
+; *****************************************************************************
+
+SCSI_RD JSR SET_SCSI_COMBUF	;SCSI READ
+SCSIRD1	LDA #RD_COM
 	STA COMBUF
 	JSR S_COM		;DO SELECT AND EXEC COMMAND
-	BCS S_READX
+	BCS SCSIRDX
 	LDA #%01101111
 	JSR S_WAIT
-	BCS S_READX
+	BCS SCSIRDX
 	LDY #0			;READ 512 BYTES
-S_READ2	LDA SCSI_D
-	STA SCSIBUF,Y
+SCSIRD2	LDA SCSI_D
+	STA BLKBUF,Y
 	INY
-	BNE S_READ2
-S_READ3	LDA SCSI_D
-	STA SCSIBUF+256,Y
+	BNE SCSIRD2
+SCSIRD3	LDA SCSI_D
+	STA BLKBUF+256,Y
 	INY
-	BNE S_READ3
+	BNE SCSIRD3
 	JSR GET_SM		;GET SCSI STATUS
-	BCS S_READX
-	JSR S_UPD		;UPDATE BLK/FLAG INFO
-S_READX	RTS
+SCSIRDX	RTS
 
 
-S_SAVE	LDA SCSI_B+2		;save old buffer
-	STA COMBUF+1
-	LDA SCSI_B+1
-	STA COMBUF+2
-	LDA SCSI_B
-	STA COMBUF+3
-	JSR SCSI_WB
-	BCS S_SAVEX
-	JSR SETBLK1		;reset blk nr
-	CLC
-S_SAVEX	RTS
-
-
-SCSI_WB	LDA #WR_COM		;Write SCSI block pysically
+SCSI_WB	JSR SET_SCSI_COMBUF
+	LDA #WR_COM		;Write SCSI block pysically
 	STA COMBUF		;block nr in COMBUF
 	JSR S_COM
-	BCS S_WBX
+	BCS SCSIWBX
 	LDA #%01101110
 	JSR S_WAIT
-	BCS S_WBX
+	BCS SCSIWBX
 	LDY #0			;SAVE 512 BYTES
-S_WB1	LDA SCSIBUF,Y
+SCSIWB1	LDA BLKBUF,Y
 	STA SCSI_D
 	INY
-	BNE S_WB1
-S_WB2	LDA SCSIBUF+256,Y
+	BNE SCSIWB1
+SCSIWB2	LDA BLKBUF+256,Y
 	STA SCSI_D
 	INY
-	BNE S_WB2
+	BNE SCSIWB2
 	JSR GET_SM		;GET SCSI STATUS
-	BCS S_WBX
-	JSR S_UPD
-S_WBX	RTS
+SCSIWBX	RTS
+
+
+SET_SCSI_COMBUF			;set COMBUF with B_BLK
+	LDA B_BLK
+	STA COMBUF+3
+	LDA B_BLK+1
+	STA COMBUF+2
+	LDA DRIVE
+	AND #%00000011		;E:=$00 - H:$03 -> 0..3 16MB/DISK =64 MB
+	ROL COMBUF+2		;add LSBit to COMBUF+2 via C
+	LSR A
+	ROR COMBUF+2
+	STA COMBUF+1		;save MSBit in COMBUF+1
+	LDX #1
+	STX COMBUF+4		;1 sector
+	DEX
+	STX COMBUF+5		;0 control byte
+	RTS
 
 
 SCSI_RST			;do a SCSI bus reset
 	LDA #1
-	STA SCSI_F		;MARK SCSI BUFFER AS INVALID
+	STA BBLK_F		;MARK SCSI BUFFER AS INVALID
 	LDA #$80		;INITIALIZE SCSI DRIVE
 	STA SCSI_R
 	LDX #80			;wait 0.03 ms
@@ -923,17 +1099,6 @@ S_RES2	DEX
 	RTS
 
 
-S_UPD	LDA COMBUF+1		;UPDATE BLK NR AND SCSI FLAG
-	STA SCSI_B+2
-	LDA COMBUF+2
-	STA SCSI_B+1
-	LDA COMBUF+3
-	STA SCSI_B
-	LDA #0
-	STA SCSI_F
-	RTS
-
-
 S_COM	LDA #20/2		;SET TIMEOUT TO 2 s
 	STA TIMER0
 	LDA #%00100110
@@ -942,16 +1107,14 @@ S_COM	LDA #20/2		;SET TIMEOUT TO 2 s
 	LDA #1			;SELECT DRIVE 1
 	STA SCSI_D
 	STA SCSI_SE
-	LDY #0
+	LDY #0-6		;to enable BNE S_COM1
 S_COM1	LDA #%11101110
 	JSR S_WAIT
 	BCS S_COMX
-	LDA COMBUF,Y
+	LDA COMBUF-256+6,Y
 	STA SCSI_D
 	INY
-	CPY #6
-	BCC S_COM1
-	CLC
+	BNE S_COM1
 S_COMX	RTS
 
 
@@ -992,44 +1155,389 @@ S_WAIT1	LDA #SCSI_TIMEOUT
 	RTS
 	
 
-SETBLK	LDX #1
-	STX COMBUF+4
+; *****************************************************************************
+; SD-Card routines
+; *****************************************************************************
+
+; *****************************************************************************
+; Set LBA to buffered block
+; LBA = Image Base + B_BLK
+; Input:  B_BLK [LO:HI] is 24 Bit buffered block Address
+; Output: LBA [LO:HI] is 32 Bit LBA adress in image
+; *****************************************************************************
+
+SETLBA	LDA DRIVE	;set LBA to B_BLK
+	AND #%00000011
+	ASL A		;Drive*4 = pnt for base LBA
+	ASL A
+	TAX
+	LDA #0
+	PHA		;push MSB=0
+	LDY #2
+SETLBA1	LDA B_BLK,Y	;push B_BLK to stack
+	PHA
+	DEY
+	BPL SETLBA1
+	LDY #0-4	;Y=$FC to enable BNE SETLBA0
+	CLC
+SETLBA0	PLA	 	;set LBA = B_BLK + IMGTAB
+	ADC IMGTAB,X
+	STA LBA-256+4,Y	;due to offset in Y
+	INX
+	INY
+	BNE SETLBA0
+	LDX #4		;load LBA to COMBUF
+	LDY #$00
+	LDA SD_TYPE
+	BNE BLK_MODE	;depending on SD type
+	CLC
+	TYA
+        STA COMBUF,X
 	DEX
-	STX COMBUF+5
-SETBLK1	LDA SECS+2
-	LSR A
-	STA COMBUF+1
-	LDA SECS+1
-	ROR A
-	STA COMBUF+2
-	LDA SECS
-	ROR A
-	STA COMBUF+3
+BIT_MODE LDA LBA,Y
+	ROL A
+        STA COMBUF,X
+	INY
+	DEX
+	BNE BIT_MODE
+	RTS
+
+BLK_MODE LDA LBA,Y
+	STA COMBUF,X
+	INY
+	DEX
+	BNE BLK_MODE
+	RTS
+
+; *****************************************************************************
+; Check Error
+; *****************************************************************************
+
+SD_RESP_ERR AND #$01		;is card in idle mode?
+	BEQ SD_DISK_RO		;no, print error
+	JSR SD_INIT		;yes, maybe card changed, reset
+	BCC SD_DISK_CHNG
+SD_NO_DISK RTS
+
+SD_DISK_RO LDA #WRT_PROT
+	SEC
+	RTS
+
+SD_DISK_CHNG LDA #SD_CHNG
+	SEC
+	RTS
+
+; *****************************************************************************
+; Read Single Data Block
+; *****************************************************************************
+SD_RD	JSR SETLBA		;read sector from SD to BLKBUF
+	LDA #CMD17		;send CMD17 (blk read)
+	JSR SD_SEND_CMD
+	BNE SD_RESP_ERR		;response <> 0 check error type
+	LDA #DATA_TOKEN	
+	LDX #0
+	STX T2CL		;set timer to 4 us/bit
+	LDA #DATA_TOKEN
+	JSR SD_WAIT_TOKEN	;wait for data token $FE
+	CMP #$FE		;is card ready for block read?
+	CLC
+	BNE SD_RD_END		;did not receive data token, exit with C = 0
+	LDY #$00		;initialize byte counter
+SD_RD_BLK0 JSR	SPI_BIN		;read a byte
+	STA BLKBUF,Y		;and store it into BLKBUF
+	INY			;increment destination pointer
+	BNE SD_RD_BLK0		;pointer overflow? No, read next byte
+SD_RD_BLK1 JSR	SPI_BIN		;read a byte
+	STA BLKBUF+256,Y	;and store it into BLKBUF+256
+	INY			;increment destination pointer
+	BNE SD_RD_BLK1		;pointer overflow? No, read next byte
+	LDX #$02		;initialize counter
+	JSR XSPI_BIN		;read 3 more bytes (CRC H, CRC L, dummy)
+	LDX #$05
+	STX T2CL		;set timer to 14 us/bit (X=5)
+	CLC
+	RTS			;yes, all data read, set C = 0
+
+SD_RD_END SEC
+	RTS
+
+; *****************************************************************************
+; Write Single Data Block
+; *****************************************************************************
+SD_WR	JSR SETLBA		;write sector from BLKBUF to SD
+	LDA #CMD24		;send CMD24 (blk write)
+	JSR SD_SEND_CMD
+	BNE SD_RESP_ERR		;response <> 0 check error type
+	LDA #DATA_TOKEN
+	JSR SPI_OUT		;write data token
+	LDY #$00		;initialize byte counter
+SD_WR_BLK0 LDA BLKBUF,Y		;read next byte from buffer
+	JSR SPI_OUT		;and write it to the card
+	INY			;increment source pointer
+	BNE SD_WR_BLK0		;pointer overflow? No, write next byte
+SD_WR_BLK1 LDA BLKBUF+256,Y	;read next page from buffer
+	JSR SPI_OUT		;and write it to the card
+	INY			;increment source pointer
+	BNE SD_WR_BLK1		;pointer overflow? No, write next byte
+	LDX #3
+	JSR XSPI_BIN		;read 4 more bytes (CRC H/L, dummy, response byte)
+	PHA
+SD_WR_BUSY JSR SPI_BIN		;read next byte
+	BEQ SD_WR_BUSY		;check if busy ($00)
+	PLA
+	AND #$1F		;mask result bits
+	CMP #$05		;data accepted?
+	SEC
+	BNE SD_WR_END		;no, exit with C = 1
+	CLC			;yes, exit with C = 0
+SD_WR_END RTS
+
+; *****************************************************************************
+; Initialize SD-Card
+; Output: C = 0 Init OK, C = 1 Error
+; *****************************************************************************
+
+SD_INIT		LDA #$00
+		STA SD_TYPE
+		JSR SD_RESET	 ; reset SD-Card
+		CMP #$01	 ; SD-Card present?
+		BNE SDC_NOT_FOUND ; invalid response, no usable card found
+		JSR SD_GET_VERS	 ; get SD-Card version
+		CMP #$05	 ; seems to be a version 1 card
+		BEQ INIT_SD0	 ; so just try to initialize it
+		CMP #$AA	 ; version 2 cards should response with $(01)AA
+		BNE SDC_NOT_FOUND ; invalid response, no usable card found
+		LDA #$40	 ; try ACMD41($40000000) init (SD Ver. 2+)
+		BNE INIT_SD1
+
+INIT_SD0 	LDA #$00	 ; try ACMD41($00000000) init (SD Ver. 1)
+INIT_SD1 	JSR SD_CLEAR_CMD ; prepare for new command
+		STA COMBUF+1
+INIT_SD2 	LDA #CMD55	 ; send prefix CMD55 (application cmd)
+		JSR SD_SEND_CMD
+		CMP #$01
+		BNE SDC_NOT_FOUND ; invalid response, no usable card found
+		LDA #ACMD41	 ; send ACMD41 (initialize)
+		JSR SD_SEND_CMD
+		BEQ INIT_SD3	 ; response = 0 means card waked up,
+		CMP #$01	 ; card still idle?
+		BEQ INIT_SD2	 ; yes, try again
+		BNE SDC_NOT_FOUND ; no, invalid response, no usable card found
+INIT_SD3 	LDA COMBUF+1	 ; Ver. 2+ Card?
+		BEQ INIT_SD4	 ; no, just set block size
+		JSR SD_CLEAR_CMD ; prepare for new command
+		LDA #CMD58	 ; send CMD58 (get OCR)
+		JSR SD_SEND_CMD
+		BNE SDC_NOT_FOUND ; invalid response, no usable card found
+		JSR SD_WAIT_RESP3 ; wait for OCR response
+		LDA COMBUF+1	 ; Test Bit 30
+		AND #$40	 ; 1 if SDHC/SDXC card, 0 else
+		STA SD_TYPE	 ; set type $00 Byte mode, $40 LBA mode
+INIT_SD4 	JSR SD_CLEAR_CMD ; prepare for new command
+		LDA #$02	 ; set blocksize to 512 byte
+		STA COMBUF+3
+		LDA #CMD16	; send CMD16 (set block size)
+		JSR SD_SEND_CMD
+		BNE SDC_NOT_FOUND ; invalid response, no usable card found
+		CLC		; everything gone well
+		RTS
+
+SDC_NOT_FOUND
+		LDA #NO_SD
+		SEC		; something went wrong
+		RTS
+
+; *****************************************************************************
+; Get SD-Card Version
+;  ****************************************************************************
+SD_GET_VERS 
+		LDA #$01	; set parameter byte 1
+ 		STA COMBUF+3
+ 		LDA #$AA	; set parameter byte 0
+ 		STA COMBUF+4
+		LDA #$87	; set crc
+		STA COMBUF+5
+		LDA #CMD8	; send CMD8($000001AA) (get version)
+		JSR SD_SEND_CMD	; response should be $01
+		CMP #$01	; SD-Card present?
+		BNE END_GET_VERS ; no, exit with result <> $01
+				; yes, fall through to sd_wait_resp
+
+; *****************************************************************************
+; Wait for a 32 Bit Command R3 Response from SD-Card
+; *****************************************************************************
+
+SD_WAIT_RESP3	LDY #$00
+READ_RESP3	JSR SD_WAIT_RESP ;yes, receive 4 response bytes
+		STA COMBUF+1,Y	;store response bytes in COMBUF+1..4
+		INY
+		CPY #$04
+		BNE READ_RESP3
+END_GET_VERS	RTS
+
+; *****************************************************************************
+; Clear SD-Card Command Parameters
+; *****************************************************************************
+
+SD_CLEAR_CMD	LDA #$00
+		LDY #$04	; 4 parameter bytes to clear
+NEXT_PARAM	STA COMBUF,Y	; clear parameter byte
+		DEY
+		BNE NEXT_PARAM	; more to clear?
+		LDA #$FF
+		STA COMBUF+5	; no, finally set CRC byte to $FF
+		RTS
+
+; *****************************************************************************
+; Send Command to SD-Card
+; Input: A = Command Index
+; *****************************************************************************
+
+SD_SEND_CMD	STA COMBUF
+		LDA #$01
+		STA DRB		;CS = 0, MOSI = 1
+		JSR SPI_BIN	; send one dummy
+		LDY #$00
+SEND_BYTE	LDA COMBUF,Y	; get one command byte
+		JSR SPI_OUT	; and send it
+		INY
+		CPY #$06	; all 6 cmd bytes send?
+		BNE SEND_BYTE	; no, send more bytes
+				; yes, fall through to sd_wait_resp
+
+; *****************************************************************************
+; Wait for a 8 Bit Command R1 Response from SD-Card
+; Output: A = Response Byte
+; *****************************************************************************
+
+SD_WAIT_RESP	LDX #$08	; wait for max 8 cycles
+READ_RESP1	JSR SPI_BIN	; receive data
+		CMP #$FF	; is it a $FF?
+		BNE RESPONSE	; no, card did respond
+		DEX		; yes, try again
+		BNE READ_RESP1	; check for timeout
+RESPONSE	CMP #0		;set Z flag
+		RTS
+
+; *****************************************************************************
+; Wait for a Special Token Response from SD-Card
+; Input:  A = Token Byte
+; Output: A = Response Byte
+; *****************************************************************************
+
+SD_WAIT_TOKEN	STA MODE	; store token into TEMP variable
+		LDY #$FF	; load low byte of time out counter
+		LDX #$0A	; load high byte of time out counter
+WAIT_RESP	JSR SPI_BIN	; read byte from SPI
+		DEY		; decrement wait counter
+		BNE WAIT_RESP0
+		DEX
+		BEQ WAIT_RESP_END ; wait counter is 0 -> time out
+WAIT_RESP0	CMP MODE	; did we read the token we are waiting for?
+		BNE WAIT_RESP	; no, read next byte
+WAIT_RESP_END	RTS
+
+; *****************************************************************************
+
+SD_RESET	JSR SD_CLEAR_CMD ;clear command parameters
+		LDA #$95
+		STA COMBUF+5	; and set crc to $95 for CMD0
+		JSR SPI_INIT	; CS=1; MOSI&CLK=1;MISO is input
+		JSR SD_PREPARE	; send dummy sequence to SD-Card
+		BNE RESET_SDC	; is MISO line high?
+		LDA #CMD0	; no, send CMD0 (reset) to SD-Card
+		JSR SD_SEND_CMD
+		JSR SD_PREPARE	; send init dummy sequence again
+		BEQ END_SD_RESET ; MISO still low? Exit with A = $FF
+RESET_SDC 	LDA #CMD0	; send CMD0 (reset) to SD-Card
+		JMP SD_SEND_CMD	; response should be $01
+
+END_SD_RESET
+		LDA #$FF	; reset failed
+		RTS
+
+; **** Prepare SD-Card for Communication **************************************
+;
+; *****************************************************************************
+
+SD_PREPARE LDX #10		; first send 80 clocks to SD-Card
+XSPI_BIN JSR SPI_BIN	; send 8 clock cycles
+	DEX
+	BPL XSPI_BIN	; send more clock cycles
+	CMP #0		; set Z flag
+SD_END	RTS
+
+;--- SPI I/O routines ---
+
+SPI_INIT LDX #%00000011	;init VIA for SPI
+	STX DRB		;CS = 1, MOSI = 1
+	STX DDRB	;Bit 0  MOSI; Bit 1  CS
+	INX		;SR mode 010 = $04
+	STX ACR
+	LDA #0
+	STA T2CH
+	INX		;Timer2 = 14 us = $05
+	STX T2CL
+	STA SR
+	LDX #24		;wait 100(500) ms for (very) slow SD cards
+SPI_IN1	JSR SPI_IN2	;delay 4.3 ms
+	SBC #1
+	BCS SPI_IN1
+	DEX
+	BNE SPI_IN1
+SPI_IN2	RTS
+
+
+SPI_BIN	LDA #$04	;read byte from SPI
+SPIBIN1	BIT IFR		;test SR bit
+	BEQ SPIBIN1
+	LDA SR		;read byte and clear SR bit
 	RTS
 
 
-CHKBLK	LDA COMBUF+3		;CHECK IF BLK IN BUFFER VALID
-	CMP SCSI_B		;C=1 invalid
-	BNE CHKBL1
-	LDA COMBUF+2
-	CMP SCSI_B+1
-	BNE CHKBL1
-	LDA COMBUF+1
-	CMP SCSI_B+2
-	BNE CHKBL1
-	LDA SCSI_F
-	LSR A
+SPI_OUT	TAX		;write A to SPI
+	STY SPI_Y	;save Y
+SPIOUT1	LDA IFR		;read byte from SPI
+	AND #$04	;test SR bit
+	BEQ SPIOUT1
+	STA IFR
+	TXA
+	LDX #0
+	LDY #%00000001	;byte to write a %1
+	SEI		;no IRQs from here
+	SEC		;set marker bit
+	ROL A		;Bit in C
+	BCS SPIOUT7
+	STX SR		;start timer2
+	STX DRB		;set bit 7 = 0
+	ASL A		;shift bit 6 in C
+	BNE SPIOUT3
+
+SPIOUT7	STX SR		;start timer2
+	STY DRB		;set bit 7 = 1
+	ASL A		;shift bit 6 in C
+	BNE SPIOUT3
+
+SPIOUT2	STX DRB		;output a %0
+	ASL A
+	BEQ SPIOUT4
+SPIOUT3	BIT $00		;3 us delay
+SPIOUT6	BCC SPIOUT2	;14 us per bit
+	STY DRB		;output a %1
+	ASL A
+	BNE SPIOUT3	;marker bit in C
+SPIOUT4	STY DRB		;CS = 0  MOSI = 1
+	CLI
+	LDY SPI_Y	;restore Y
 	RTS
 
-CHKBL1	SEC
-	RTS
-
+SPI_Y	DB 0		;buffer for Y
 
 DMA	
 
 DIRBF	=  DMA+256
 
-SCSIBUF	=  DIRBF+256
+BLKBUF	=  DIRBF+256
 
 
 	END
