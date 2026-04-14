@@ -1,7 +1,7 @@
 ;COPY.ASM
 ;(c) by D. Lausberg  1995
 
-;Kopierprogramm fÅr 1 und 2 Disk Drives
+;Kopierprogramm fuer 1 und 2 Disk Drives
 ;Aufruf   COPY d:filename.ext d: /switch
 ;Switches   Y   Y/N Abfrage nach jedem Filenamen
 
@@ -10,6 +10,10 @@
 ;V1.2	31.12.95	no disc change on C: and above
 ;V1.3	11.04.02	sector BIOS version
 ;V1.4	30.04.21	4 Floppies
+;V1.5	31.03.26	SD adaption
+
+
+VERSION	= $15		;VERSION NUMBER
 
 ;Parameters
 
@@ -34,7 +38,7 @@ PAGES	= $10		;nr of pages to buffer files
 BUFPNT	= $20		;FILENAME BUFFER POINTER
 S_PNT	= $22		;SOURCE FILENAME BUFFER POINTER
 
-CCPV	= $DE
+CCPV	= $E0
 BDOS	= $F0
 FCB1	= $F6
 FCB2	= $F4
@@ -681,8 +685,8 @@ SWTABX
 MESSAGE
 	DB '  ^C=abort, E=Exit, Y/N  ',EOT
 
-STARTM	DB CR,LF,CR,LF,'COPY V1.4                '
-	DB '  (c) D.Lausberg   1995',CR,LF,CR,LF,EOT
+STARTM	DB CR,LF,CR,LF,'COPY',VERSION/16+$30,'.',VERSION*$1000/$1000+$30
+	DB '                 (c) D.Lausberg   1995',CR,LF,CR,LF,EOT
 ENDM	DB CR,LF,CR,LF,'COPY finished',CR,LF,EOT
 SOURCE	DB CR,LF,CR,LF,'Insert source',EOT
 DEST	DB CR,LF,CR,LF,'Insert destination',EOT

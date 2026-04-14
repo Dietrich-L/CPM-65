@@ -28,7 +28,7 @@ My system is a heavily modified and expanded Elektor Junior Computer with 57 kB 
 &nbsp;System Structure
 ---------------------
 CPM-65 consists of 3 layers:
-- BIOS Basic I/O system - currently 3 kB, could be reduced to 2kB <br>  by removing SCSI and I2C drivers. Drives can be A-H non consecutive. <br>  I/O console is serial TTY 1200 - 9600 Baud
+- BIOS Basic I/O system - currently 3 kB, could be reduced to 2kB <br>  by removing SCSI, SD and I2C drivers. Drives can be A-L non consecutive. <br>  I/O console is serial TTY 1200 - 38400 Baud
 - BDOS Basic disc operating system - this is the CPM-65 kernal. Size 2 kB
 - CCP Console command program - a simple console which only allows <br>  to invoke CPM-65 programs. No resident commands. Size 1 kB
 <br><br>&nbsp;File &amp; Disc Format
@@ -82,7 +82,7 @@ Software List
         <tr>
           <td><span style="font-family: Courier New,Courier,monospace;">BDOS<br>
             </span> </td>
-          <td><span style="font-family: Courier New,Courier,monospace;">2.5<br>
+          <td><span style="font-family: Courier New,Courier,monospace;">2.6<br>
             </span> </td>
           <td><span style="font-family: Courier New,Courier,monospace;">CPM-65
               BDOS<br>
@@ -91,7 +91,7 @@ Software List
         <tr>
           <td><span style="font-family: Courier New,Courier,monospace;">BIOS<br>
             </span> </td>
-          <td><span style="font-family: Courier New,Courier,monospace;">3.2<br>
+          <td><span style="font-family: Courier New,Courier,monospace;">3.3<br>
             </span> </td>
           <td><span style="font-family: Courier New,Courier,monospace;">CPM-65
               BIOS</span></td>
@@ -135,7 +135,7 @@ Software List
         <tr>
           <td><span style="font-family: Courier New,Courier,monospace;">COPY<br>
             </span> </td>
-          <td><span style="font-family: Courier New,Courier,monospace;">1.4<br>
+          <td><span style="font-family: Courier New,Courier,monospace;">1.5<br>
             </span> </td>
           <td><span style="font-family: Courier New,Courier,monospace;">multi
               file copy utility<br>
@@ -144,7 +144,7 @@ Software List
         <tr>
           <td><span style="font-family: Courier New,Courier,monospace;">D<br>
             </span> </td>
-          <td><span style="font-family: Courier New,Courier,monospace;">2.3<br>
+          <td><span style="font-family: Courier New,Courier,monospace;">2.4<br>
             </span> </td>
           <td><span style="font-family: Courier New,Courier,monospace;">show
               directory alphabetically sorted<br>
@@ -171,7 +171,7 @@ Software List
         <tr>
           <td><span style="font-family: Courier New,Courier,monospace;">DUTIL<br>
             </span> </td>
-          <td><span style="font-family: Courier New,Courier,monospace;">1.5<br>
+          <td><span style="font-family: Courier New,Courier,monospace;">1.6<br>
             </span> </td>
           <td><span style="font-family: Courier New,Courier,monospace;">disc
               sector editor<br>
@@ -180,7 +180,7 @@ Software List
         <tr>
           <td style="height: 28.8167px;"><span style="font-family: Courier New,Courier,monospace;">EDIT<br>
             </span> </td>
-          <td><span style="font-family: Courier New,Courier,monospace;">1.1<br>
+          <td><span style="font-family: Courier New,Courier,monospace;">1.3<br>
             </span> </td>
           <td><span style="font-family: Courier New,Courier,monospace;">simple
               screen editor for text files and FORTH screens<br>
@@ -205,6 +205,15 @@ Software List
             </span> </td>
         </tr>
         <tr>
+          <td><span style="font-family: Courier New,Courier,monospace;">FDISK<br>
+            </span> </td>
+          <td><span style="font-family: Courier New,Courier,monospace;">1.1<br>
+            </span> </td>
+          <td><span style="font-family: Courier New,Courier,monospace;">Format disk - 
+             copy system files and clear dir<br>
+            </span> </td>
+        </tr>
+        <tr>
           <td><span style="font-family: Courier New,Courier,monospace;">FORMAT<br>
             </span> </td>
           <td><span style="font-family: Courier New,Courier,monospace;">2.4<br>
@@ -216,7 +225,7 @@ Software List
         <tr>
           <td><span style="font-family: Courier New,Courier,monospace;">FORTH<br>
             </span> </td>
-          <td><span style="font-family: Courier New,Courier,monospace;">1.6a<br>
+          <td><span style="font-family: Courier New,Courier,monospace;">1.7<br>
             </span> </td>
           <td><span style="font-family: Courier New,Courier,monospace;">FIG
               FORTH including mudule for standalone applications<br>
@@ -250,6 +259,15 @@ Software List
             </span> </td>
         </tr>
         <tr>
+          <td><span style="font-family: Courier New,Courier,monospace;">RESTART<br>
+            </span></td>
+          <td><span style="font-family: Courier New,Courier,monospace;">1.0<br>
+            </span></td>
+          <td><span style="font-family: Courier New,Courier,monospace;">Reboot
+              Junior Computer<br>
+            </span></td>
+        </tr>
+        <tr>
           <td><span style="font-family: Courier New,Courier,monospace;">RFILE<br>
             </span></td>
           <td><span style="font-family: Courier New,Courier,monospace;">1.1<br>
@@ -258,7 +276,7 @@ Software List
               file through serial I/O<br>
             </span></td>
         </tr>
-        <tr>
+         <tr>
           <td><span style="font-family: Courier New,Courier,monospace;">SCSIMGR<br>
             </span></td>
           <td><span style="font-family: Courier New,Courier,monospace;">1.1<br>
