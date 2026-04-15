@@ -29,6 +29,8 @@ VERSION	= $33		;VERSION NUMBER
 ;FORMAT	DS/DD	320 KBYTES/DISK, 4 Drives 0..3
 ;SCSI2HD	4x 16 MBytes on SCSI ID1  4..7
 ;SD		4x  1 MByte IMG on SD partition (FAT 12/16/32) 8..12
+;		SD initialization and block transfer routines based on
+;		work of Joerg Walke, JC-][
 ;=====================================
 
 ;PAGE 00 CELLS
